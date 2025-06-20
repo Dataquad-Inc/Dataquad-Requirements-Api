@@ -1318,11 +1318,21 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
         cd.contact_number AS contactNumber,
         cd.qualification AS qualification,
         cs.skills AS skills,
-        CASE 
-            WHEN JSON_VALID(idt.interview_status) 
-            THEN JSON_UNQUOTE(JSON_EXTRACT(idt.interview_status, '$[0].status')) 
-            ELSE idt.interview_status 
-        END AS interviewStatus,
+        CASE\s
+                        WHEN JSON_VALID(idt.interview_status) = 1\s
+                             AND JSON_LENGTH(idt.interview_status) > 0
+                        THEN JSON_UNQUOTE(
+                            JSON_EXTRACT(
+                                idt.interview_status,
+                                CONCAT(
+                                    '$[',
+                                    CAST(JSON_LENGTH(idt.interview_status) - 1 AS CHAR),
+                                    '].status'
+                                )
+                            )
+                        )
+                        ELSE idt.interview_status\s
+                    END AS interviewStatus,
         idt.interview_level AS interviewLevel,
         idt.interview_date_time AS interviewDateTime,
         r.job_id AS jobId,
@@ -1505,11 +1515,21 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
         cd.contact_number AS contactNumber,
         cd.qualification AS qualification,
         cs.skills AS skills,
-        CASE 
-            WHEN JSON_VALID(idt.interview_status) 
-            THEN JSON_UNQUOTE(JSON_EXTRACT(idt.interview_status, '$[0].status')) 
-            ELSE idt.interview_status 
-        END AS interviewStatus,
+        CASE\s
+                        WHEN JSON_VALID(idt.interview_status) = 1\s
+                             AND JSON_LENGTH(idt.interview_status) > 0
+                        THEN JSON_UNQUOTE(
+                            JSON_EXTRACT(
+                                idt.interview_status,
+                                CONCAT(
+                                    '$[',
+                                    CAST(JSON_LENGTH(idt.interview_status) - 1 AS CHAR),
+                                    '].status'
+                                )
+                            )
+                        )
+                        ELSE idt.interview_status\s
+                    END AS interviewStatus,
         idt.interview_level AS interviewLevel,
         idt.interview_date_time AS interviewDateTime,
         r.job_id AS jobId,
