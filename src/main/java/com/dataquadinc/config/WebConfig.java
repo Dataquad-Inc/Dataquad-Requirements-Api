@@ -21,7 +21,9 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://192.168.0.135:80","http://182.18.177.16:443",
                         "http://mymulya.com:443",
                         "http://localhost/",
-                        "http://182.18.177.16/" // Sixth IP
+                        "http://154.210.288.26",
+                        "http://192.168.0.203:3000",
+                        "http://192.168.0.167:3000" // Sixth IP
                 )
 
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // Allowed HTTP methods
