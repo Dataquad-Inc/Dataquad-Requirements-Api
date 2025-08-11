@@ -18,7 +18,7 @@ public class InProgressEmailScheduler {
         this.requirementsService = requirementsService;
     }
 
-    @Scheduled(cron = "0 0 18 * * ?")
+    @Scheduled(cron = "0 0 18 * * ?",zone = "Asia/Kolkata") 
     public void sendDailyInProgressReportEmail() {
         try {
             // 🔍 Get requirements from today
