@@ -40,7 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
 		"http://192.168.0.135:80/","http://192.168.0.135/","http://182.18.177.16:443","http://mymulya.com:443","http://localhost/",
 		"http://154.210.288.26/",
 		"http://192.168.0.203:3000/",
-		"http://192.168.0.167:3000/"})
+		"http://192.168.0.167:3000/","http://192.168.0.182:3000"})
 @RestController
 @RequestMapping("/requirements")
 //@CrossOrigin("*")
@@ -738,7 +738,6 @@ public class RequirementsController {
 			@RequestBody(required = false) List<InProgressRequirementDTO> dto) {
 
 		if ("null".equalsIgnoreCase(userId)) {
-			// Case 1: userId is "null" → fetch all data internally
 			return ResponseEntity.ok(service.sendInProgressEmail(null, null));
 		}
 
