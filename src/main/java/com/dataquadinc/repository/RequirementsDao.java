@@ -7,9 +7,7 @@ import java.util.Optional;
 
 import com.dataquadinc.dto.*;
 import jakarta.persistence.Tuple;
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,34 +17,22 @@ import com.dataquadinc.model.RequirementsModel;
 @Repository
 public interface RequirementsDao extends JpaRepository<RequirementsModel, String> {
 
-    @Query("SELECT r FROM RequirementsModel r WHERE r.jobId = :jobId")
-    Optional<RequirementsModel> findRecruitersByJobId(@Param("jobId") String jobId);
-
     @Query(value = """
     SELECT u.user_name 
     FROM user_details u
     JOIN job_recruiters jr ON u.user_id = jr.recruiter_id
-    WHERE jr.job_id = :jobId
+    WHERE jr.job_id = :jobId and u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     List<String> findRecruiterNamesByJobId(@Param("jobId") String jobId);
 
     @Query(value = """
-
     SELECT cs.*, cd.*, u.user_name AS recruiterName 
-
     FROM candidate_submissions cs
-
     JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-
     JOIN user_details u ON cd.user_email = u.email
-
-    WHERE cs.job_id = :jobId
-
+    WHERE cs.job_id = :jobId and u.status != 'inactive' and u.entity = 'IN'
     """, nativeQuery = true)
-
     List<Tuple> findCandidatesByJobId(@Param("jobId") String jobId);
-
-
 
     @Query(value = """
     SELECT cs.*, 
@@ -60,16 +46,16 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     JOIN candidates cd ON cs.candidate_id = cd.candidate_id
     JOIN user_details u ON cd.user_email = u.email
     JOIN interview_details id ON cs.candidate_id = id.candidate_id
-    WHERE cs.job_id = :jobId
+    WHERE cs.job_id = :jobId and u.status != 'inactive' and u.entity = 'IN'
       AND id.interview_date_time IS NOT NULL
       AND cs.job_id = id.job_id           -- Ensure job_id is present in both tables
 """, nativeQuery = true)
     List<Tuple> findInterviewScheduledCandidatesByJobId(@Param("jobId") String jobId);
 
-    @Query(value = "SELECT email, user_name FROM user_details WHERE user_id = :userId AND status != 'inactive'", nativeQuery = true)
+    @Query(value = "SELECT email, user_name FROM user_details WHERE user_id = :userId AND status != 'inactive' and entity = 'IN'", nativeQuery = true)
     Tuple findUserEmailAndUsernameByUserId(@Param("userId") String userId);
 
-    @Query(value = "SELECT email, user_name FROM user_details WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(:assignedBy)) AND status != 'inactive'", nativeQuery = true)
+    @Query(value = "SELECT email, user_name FROM user_details WHERE LOWER(TRIM(user_name)) = LOWER(TRIM(:assignedBy)) AND status != 'inactive' and entity = 'IN'", nativeQuery = true)
     Tuple findUserEmailAndUsernameByAssignedBy(@Param("assignedBy") String assignedBy);
 
 
@@ -81,19 +67,9 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             LEFT JOIN user_roles ur ON u.user_id = ur.user_id 
             LEFT JOIN roles r ON ur.role_id = r.id
             LEFT JOIN bdm_client b ON u.user_id = b.on_boarded_by
-            WHERE r.name = 'BDM' AND u.user_id = :userId
+            WHERE r.name = 'BDM' AND u.user_id = :userId and u.status != 'inactive' and u.entity = 'IN'
             """, nativeQuery = true)
     List<Tuple> findBdmEmployeeByUserId(@Param("userId") String userId);
-
-    @Query(value = """
-            SELECT id, client_name, on_boarded_by, client_address, 
-                   JSON_UNQUOTE(JSON_EXTRACT(client_spoc_name, '$')) AS client_spoc_name,
-                   JSON_UNQUOTE(JSON_EXTRACT(client_spoc_emailid, '$')) AS client_spoc_emailid,
-                   JSON_UNQUOTE(JSON_EXTRACT(client_spoc_mobile_number, '$')) AS client_spoc_mobile_number
-            FROM bdm_client 
-            WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
-            """, nativeQuery = true)
-    List<Tuple> findClientsByBdmUserId(@Param("userId") String userId);
 
     @Query(value = """
         SELECT id, client_name, on_boarded_by, client_address, 
@@ -101,21 +77,13 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
                JSON_UNQUOTE(JSON_EXTRACT(client_spoc_emailid, '$')) AS client_spoc_emailid,
                JSON_UNQUOTE(JSON_EXTRACT(client_spoc_mobile_number, '$')) AS client_spoc_mobile_number
         FROM bdm_client 
-        WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
-          AND DATE(created_at) BETWEEN :startDate AND :endDate
+        WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId and status != 'inactive' and entity = 'IN')
+          AND DATE(created_at) BETWEEN :startDate AND :endDate 
         """, nativeQuery = true)
     List<Tuple> findClientsByBdmUserIdAndCreatedAtBetween(@Param("userId") String userId,
                                                           @Param("startDate") LocalDate startDate,
                                                           @Param("endDate") LocalDate endDate);
 
-
-    @Query(value = """
-                SELECT r.job_id, r.job_title, b.client_name
-                FROM requirements_model r
-                JOIN bdm_client b ON r.client_name = b.client_name
-                WHERE b.on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
-            """, nativeQuery = true)
-    List<Tuple> findJobsByBdmUserId(@Param("userId") String userId);
 
     @Query(value = """
     SELECT 
@@ -134,7 +102,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     JOIN bdm_client b 
         ON TRIM(UPPER(r.client_name)) COLLATE utf8mb4_bin = TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin
     WHERE TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin = TRIM(UPPER(:clientName)) COLLATE utf8mb4_bin
-      AND r.job_id IS NOT NULL
+      AND r.job_id IS NOT NULL AND u.status != 'inactive' and u.entity = 'IN'
     GROUP BY r.job_id, r.client_name
     """, nativeQuery = true)
     List<Tuple> findRequirementsByClientName(@Param("clientName") String clientName);
@@ -158,33 +126,13 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
         WHERE TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin = TRIM(UPPER(:clientName)) COLLATE utf8mb4_bin
           AND r.job_id IS NOT NULL
           AND DATE(r.requirement_added_time_stamp) BETWEEN :startDate AND :endDate
+          AND u.status != 'inactive' and u.entity = 'IN'
         """, nativeQuery = true)
     List<Tuple> findRequirementsByClientNameDateFilter(
             @Param("clientName") String clientName,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
-
-    @Query(value = """
-        SELECT 
-            cd.candidate_id, 
-            cd.full_name, 
-            cd.candidate_email_id AS candidateEmailId, 
-            cd.contact_number, 
-            cd.qualification, 
-            cs.skills, 
-            cs.overall_feedback, 
-            cs.user_id,
-            r.job_id, 
-            r.job_title, 
-            b.client_name
-        FROM candidate_submissions cs
-        JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-        JOIN requirements_model r ON cs.job_id = r.job_id
-        JOIN bdm_client b ON r.client_name = b.client_name
-        WHERE b.client_name = :clientName
-        """, nativeQuery = true)
-    List<Tuple> findAllSubmissionsByClientName(@Param("clientName") String clientName);
 
     @Query(value = """
     SELECT DISTINCT 
@@ -302,10 +250,6 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             @Param("endDate") LocalDate endDate
     );
 
-
-
-
-
     @Query(value = """
         SELECT 
             cd.candidate_id, 
@@ -354,200 +298,6 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
-
-    // Fetch employee candidate statistics
-    @Query(value = """
-    SELECT 
-        u.user_id AS employeeId,
-        u.user_name AS employeeName,
-        u.email AS employeeEmail,
-        r.name AS role,
-        COALESCE((
-            SELECT COUNT(DISTINCT cd.candidate_id) 
-            FROM candidates cd
-            JOIN candidate_submissions cs ON cd.candidate_id = cs.candidate_id
-            WHERE cs.user_id = u.user_id
-        ), 0) AS numberOfSubmissions,
-        
-        COALESCE((
-            SELECT COUNT(DISTINCT idt.interview_id)
-            FROM interview_details idt
-            JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-            JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-            WHERE cs.user_id = u.user_id
-            AND idt.interview_date_time IS NOT NULL
-        ), 0) AS numberOfInterviews,
-        
-            COALESCE((
-                        SELECT COUNT(DISTINCT idt.interview_id)
-                        FROM interview_details idt
-                        JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-                        JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-                        WHERE cs.user_id = u.user_id
-                          AND idt.interview_date_time IS NOT NULL -- ✅ interview must be scheduled
-                          AND (
-                              -- CASE 1: Direct string match
-                              idt.interview_status = 'PlACED'
-            
-                              -- CASE 2: JSON with latest status = 'PLACED'
-                              OR (
-                                  JSON_VALID(idt.interview_status)
-                                  AND JSON_UNQUOTE(
-                                      JSON_EXTRACT(
-                                          idt.interview_status,
-                                          CONCAT('$[', JSON_LENGTH(idt.interview_status) - 1, '].status')
-                                      )
-                                  ) = 'PLACED'  -- CASE SENSITIVE match
-                              )
-                          )
-                    ), 0) AS numberOfPlacements,
-            
-            
-        
-        COALESCE((
-            SELECT COUNT(DISTINCT req.client_name) 
-            FROM requirements_model req 
-            JOIN job_recruiters jrp ON req.job_id = jrp.job_id
-            WHERE jrp.recruiter_id = u.user_id
-        ), 0) AS numberOfClients,
-        
-        COALESCE((
-            SELECT COUNT(DISTINCT req.job_id) 
-            FROM requirements_model req 
-            JOIN job_recruiters jrp ON req.job_id = jrp.job_id
-            WHERE jrp.recruiter_id = u.user_id
-        ), 0) AS numberOfRequirements
-        
-    FROM user_details u
-    JOIN user_roles ur ON u.user_id = ur.user_id
-    JOIN roles r ON ur.role_id = r.id
-    WHERE r.name = 'Employee'
-    """, nativeQuery = true)
-    List<Tuple> getEmployeeCandidateStats();
-
-    // Teamlead candidate statistics
-    @Query(value = """
-    SELECT 
-        u.user_id AS employeeId,
-        u.user_name AS employeeName,
-        u.email AS employeeEmail,
-        'TEAMLEAD' AS role,
-        COALESCE((
-            SELECT COUNT(DISTINCT r2.client_name)
-            FROM requirements_model r2
-            WHERE REPLACE(REPLACE(r2.assigned_by, '\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\"', ''), '"', '')
-        ), 0) AS numberOfClients,
-        
-        COALESCE((
-            SELECT COUNT(DISTINCT r2.job_id)
-            FROM requirements_model r2
-            WHERE REPLACE(REPLACE(r2.assigned_by, '\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\"', ''), '"', '')
-        ), 0) AS numberOfRequirements,
-        
-        -- Self Submissions
-        COALESCE((
-            SELECT COUNT(*)
-            FROM candidates cd
-            JOIN candidate_submissions cs ON cd.candidate_id = cs.candidate_id
-            WHERE cs.user_id = u.user_id
-        ), 0) AS selfSubmissions,
-        
-        -- Self Interviews
-        COALESCE((
-            SELECT COUNT(DISTINCT idt.interview_id)
-            FROM interview_details idt
-            JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-            JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-            WHERE cs.user_id = u.user_id
-            AND idt.interview_date_time >= NOW()
-            AND cs.job_id IN (
-                SELECT job_id FROM requirements_model r2
-                WHERE REPLACE(REPLACE(r2.assigned_by, '\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\"', ''), '"', '')
-            )
-        ), 0) AS selfInterviews,
-        
-        -- Self Placements
-        COALESCE((
-            SELECT COUNT(DISTINCT idt.interview_id)
-            FROM interview_details idt
-            JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-            JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-            WHERE cs.user_id = u.user_id
-            AND (
-                idt.interview_status = 'Placed'
-                OR (
-                    JSON_VALID(idt.interview_status)
-                    AND JSON_UNQUOTE(JSON_EXTRACT(
-                        idt.interview_status,
-                        CONCAT('$[', JSON_LENGTH(idt.interview_status)-1, '].status')
-                    )) = 'PLACED'
-                )
-            )
-        ), 0) AS selfPlacements,
-        
-        -- Team Submissions
-        COALESCE((
-            SELECT COUNT(*)
-            FROM candidate_submissions cs
-            JOIN requirements_model r2 ON cs.job_id = r2.job_id
-            WHERE REPLACE(REPLACE(r2.assigned_by, '\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\"', ''), '"', '')
-            AND cs.candidate_id IN (
-                SELECT candidate_id FROM candidates 
-                WHERE user_id != u.user_id
-            )
-        ), 0) AS teamSubmissions,
-        
-        -- Team Interviews
-        COALESCE((
-            SELECT COUNT(DISTINCT idt.interview_id)
-            FROM interview_details idt
-            JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-            JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-            WHERE cs.user_id != u.user_id
-            AND idt.interview_date_time IS NOT NULL
-            AND cs.job_id IN (
-                SELECT job_id FROM requirements_model r2
-                WHERE REPLACE(REPLACE(r2.assigned_by, '\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\"', ''), '"', '')
-            )
-        ), 0) AS teamInterviews,
-        
-   -- Team Placements
-               COALESCE((
-                   SELECT COUNT(DISTINCT idt.interview_id)
-                   FROM interview_details idt
-                   JOIN candidate_submissions cs ON idt.candidate_id = cs.candidate_id
-                   JOIN candidates cd ON cs.candidate_id = cd.candidate_id
-                   JOIN requirements_model r2 ON cs.job_id = r2.job_id
-                   WHERE REPLACE(REPLACE(r2.assigned_by, '"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '"', ''), '"', '')
-                     AND cs.user_id != u.user_id
-                     AND idt.interview_date_time IS NOT NULL
-                     AND (
-                         -- Case 1: Direct string match
-                         idt.interview_status = 'PLACED'
-            
-                         -- Case 2: JSON with latest status = 'PLACED'
-                         OR (
-                             JSON_VALID(idt.interview_status)
-                             AND JSON_UNQUOTE(
-                                 JSON_EXTRACT(
-                                     idt.interview_status,
-                                     CONCAT('$[', JSON_LENGTH(idt.interview_status) - 1, '].status')
-                                 )
-                             ) = 'PLACED'
-                         )
-                     )
-               ), 0) AS teamPlacements
-            
-        
-    FROM user_details u
-    WHERE EXISTS (
-        SELECT 1 FROM user_roles ur 
-        JOIN roles rl ON ur.role_id = rl.id 
-        WHERE ur.user_id = u.user_id AND rl.name = 'Teamlead'
-    )
-    GROUP BY u.user_id, u.user_name, u.email
-""", nativeQuery = true)
-    List<Tuple> getTeamleadCandidateStats();
 
 
     @Query(value = """
@@ -699,29 +449,11 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             interviewLevel VARCHAR(50) PATH '$.interviewLevel'
         )
     ) AS latest_status ON TRUE
-
+    WHERE u.status != 'inactive' and u.entity = 'IN'
     GROUP BY u.user_id, u.user_name, u.email
     """, nativeQuery = true)
     List<Tuple> countInterviewsByStatus();
 
-
-
-
-    @Query(value = """
-            SELECT DISTINCT
-                b.id AS clientId,  
-                b.client_name AS clientName,  
-                b.client_address AS clientAddress,  
-                b.on_boarded_by AS onBoardedBy,  
-                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(JSON_UNQUOTE(JSON_EXTRACT(b.client_spoc_name, '$')), '[\"', ''), '\"]', ''), '\\\\"', ''), '\\\\', ''), '"', '') AS clientSpocName,  
-                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(JSON_UNQUOTE(JSON_EXTRACT(b.client_spoc_mobile_number, '$')), '[\"', ''), '\"]', ''), '\\\\"', ''), '\\\\', ''), '"', '') AS clientSpocMobileNumber
-            FROM bdm_client b
-            JOIN requirements_model r ON LOWER(b.client_name) = LOWER(r.client_name)  
-            JOIN job_recruiters jr ON r.job_id = jr.job_id  
-            JOIN user_details u ON jr.recruiter_id = u.user_id  
-            WHERE u.user_id = :userId
-            """, nativeQuery = true)
-    List<ClientDetailsDTO> findClientDetailsByUserId(@Param("userId") String userId);
 
     @Query(value = """
                 SELECT 
@@ -740,7 +472,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.id
                 WHERE r.name IN ('Employee', 'Teamlead')
-                AND u.user_id = :userId
+                AND u.user_id = :userId and u.status != 'inactive' and u.entity = 'IN'
             """, nativeQuery = true)
     List<Tuple> getEmployeeDetailsByUserId(@Param("userId") String userId);
 
@@ -776,67 +508,6 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
     List<RequirementsModel> findByRequirementAdded();
 
-    @Query(value = "SELECT * FROM requirements_model WHERE status <> 'Closed'", nativeQuery = true)
-    List<RequirementsModel> findAllActiveRequirements();
-
-
-
-    @Query(value = """
-    SELECT 
-        cd.candidate_id AS candidateId,
-        cd.full_name AS fullName,
-        cd.candidate_email_id AS candidateEmailId,
-        cd.contact_number AS contactNumber,
-        cd.qualification AS qualification,
-        s.skills AS skills,
-        s.overall_feedback AS overallFeedback,
-        r.job_id AS jobId,
-        r.job_title AS jobTitle,
-        r.client_name AS clientName
-    FROM candidates cd
-    JOIN candidate_submissions s ON cd.candidate_id = s.candidate_id
-    JOIN requirements_model r ON s.job_id = r.job_id
-    WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
-""", nativeQuery = true)
-    List<SubmittedCandidateDTO> findSubmittedCandidatesByAssignedBy(@Param("username") String username);
-
-    @Query(value = """
-    SELECT 
-        cd.candidate_id AS candidateId,
-        cd.full_name AS fullName,
-        cd.candidate_email_id AS candidateEmailId,
-        cd.contact_number AS contactNumber,
-        cd.qualification AS qualification,
-        s.skills AS skills,
-        CASE 
-            WHEN JSON_VALID(i.interview_status) = 1 
-              AND JSON_LENGTH(i.interview_status) > 0
-            THEN JSON_UNQUOTE(
-                JSON_EXTRACT(
-                    i.interview_status,
-                    CONCAT(
-                        '$[',
-                        CAST(JSON_LENGTH(i.interview_status) - 1 AS CHAR),
-                        '].status'
-                    )
-                )
-            )
-            ELSE i.interview_status
-        END AS interviewStatus,
-        i.interview_level AS interviewLevel,
-        i.interview_date_time AS interviewDateTime,
-        r.job_id AS jobId,
-        r.job_title AS jobTitle,
-        r.client_name AS clientName
-    FROM candidates cd
-    JOIN candidate_submissions s ON cd.candidate_id = s.candidate_id
-    JOIN interview_details i ON i.candidate_id = s.candidate_id
-    JOIN requirements_model r ON s.job_id = r.job_id
-    WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
-      AND i.interview_date_time IS NOT NULL
-""", nativeQuery = true)
-    List<InterviewScheduledDTO> findScheduledInterviewsByAssignedBy(@Param("username") String username);
-
 
     @Query(value = """
     SELECT 
@@ -854,56 +525,6 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
 """, nativeQuery = true)
     List<JobDetailsDTO> findJobDetailsByAssignedBy(@Param("username") String username);
-
-    @Query(value = """
-SELECT 
-    cd.candidate_id AS candidateId,
-    cd.full_name AS fullName,
-    cd.candidate_email_id AS candidateEmailId,
-    cd.contact_number AS contactNumber,
-    cd.qualification AS qualification,
-    s.skills AS skills,
-    CASE 
-        WHEN JSON_VALID(i.interview_status) 
-        THEN JSON_UNQUOTE(
-            JSON_EXTRACT(
-                i.interview_status, 
-                CONCAT(
-                    '$[', 
-                    JSON_LENGTH(i.interview_status) - 1, 
-                    '].status'
-                )
-            )
-        )
-        ELSE i.interview_status 
-    END AS interviewStatus,
-    i.interview_level AS interviewLevel,
-    i.interview_date_time AS interviewDateTime,
-    r.job_id AS jobId,
-    r.job_title AS jobTitle,
-    r.client_name AS clientName
-FROM candidates cd
-JOIN candidate_submissions s ON cd.candidate_id = s.candidate_id
-JOIN interview_details i ON i.candidate_id = s.candidate_id
-JOIN requirements_model r ON s.job_id = r.job_id
-WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
-  AND (
-      (JSON_VALID(i.interview_status) 
-       AND JSON_UNQUOTE(
-           JSON_EXTRACT(
-               i.interview_status, 
-               CONCAT(
-                   '$[', 
-                   JSON_LENGTH(i.interview_status) - 1, 
-                   '].status'
-               )
-           )
-       ) = 'PLACED'
-      )
-      OR i.interview_status = 'PLACED'
-  )
-""", nativeQuery = true)
-    List<PlacementDetailsDTO> findPlacementCandidatesByAssignedBy(@Param("username") String username);
 
     @Query(value = """
     SELECT DISTINCT
@@ -950,7 +571,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
     FROM user_details u
     JOIN user_roles ur ON u.user_id = ur.user_id
     JOIN roles r ON ur.role_id = r.id
-    WHERE u.user_id = :userId
+    WHERE u.user_id = :userId and u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     Tuple getUserRoleAndUsername(@Param("userId") String userId);
 
@@ -973,15 +594,15 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
             @Param("recruiterId") String recruiterId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
-    @Query(value = "SELECT COUNT(*) FROM user_details WHERE user_id = :userId", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM user_details WHERE user_id = :userId AND status != 'INACTIVE' AND entity = 'IN'", nativeQuery = true)
     int countByUserId(@Param("userId") String userId);
 
 
     // Native query to validate if the username exists in user_details_prod
-    @Query(value = "SELECT user_name FROM user_details WHERE user_id = :userId", nativeQuery = true)
+    @Query(value = "SELECT user_name FROM user_details WHERE user_id = :userId AND status != 'INACTIVE' AND entity = 'IN'", nativeQuery = true)
     String findUserNameByUserId(@Param("userId") String userId);
 
-    @Query(value = "SELECT email FROM user_details WHERE LOWER(designation) = LOWER(:designation)", nativeQuery = true)
+    @Query(value = "SELECT email FROM user_details WHERE LOWER(designation) = LOWER(:designation) AND status != 'INACTIVE' AND entity = 'IN'", nativeQuery = true)
     List<String> findEmailsByDesignationIgnoreCase(@Param("designation") String designation);
 
 
@@ -1026,6 +647,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
     WHERE cs.job_id = :jobId
       AND id.is_placed = true
       AND cs.job_id = id.job_id
+      AND u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     List<Tuple> findPlacementsByJobId(@Param("jobId") String jobId);
 
@@ -1256,7 +878,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
     WHERE EXISTS (
         SELECT 1 FROM user_roles ur 
         JOIN roles rl ON ur.role_id = rl.id 
-        WHERE ur.user_id = u.user_id AND rl.name = 'Teamlead'
+        WHERE ur.user_id = u.user_id AND rl.name = 'Teamlead' and u.status != 'inactive' and u.entity = 'IN'
     )
     GROUP BY u.user_id, u.user_name, u.email
 """, nativeQuery = true)
@@ -1376,6 +998,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
     JOIN user_roles ur ON u.user_id = ur.user_id
     JOIN roles r ON ur.role_id = r.id
     WHERE r.name = 'Employee'
+    AND u.status != 'inactive' and u.entity = 'IN'
     """, nativeQuery = true)
     List<Tuple> getEmployeeCandidateStats(@Param("startDate") LocalDate startDate,
                                           @Param("endDate") LocalDate endDate);
@@ -1478,8 +1101,9 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
     FROM requirements_model r
     JOIN job_recruiters jr ON r.job_id = jr.job_id
     JOIN user_details u ON jr.recruiter_id = u.user_id
-    WHERE u.user_id = :userId
+    WHERE u.user_id = :userId AND u.status != 'inactive' and u.entity = 'IN'
       AND r.requirement_added_time_stamp BETWEEN :startDate AND :endDate
+      
 """, nativeQuery = true)
     List<JobDetailsDTO> findJobDetailsByUserIdAndDateRange(
             @Param("userId") String userId,
@@ -1534,6 +1158,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
                         OR UPPER(idt.interview_status) = 'PLACED'
                     )
       AND idt.timestamp BETWEEN :startDate AND :endDate
+      AND u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     List<PlacementDetailsDTO> findPlacementCandidatesByUserIdAndDateRange(
             @Param("userId") String userId,
@@ -1561,6 +1186,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
         )
     )
     AND DATE(r.requirement_added_time_stamp) BETWEEN :startDate AND :endDate
+    AND u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     List<ClientDetailsDTO> findClientDetailsByUserIdAndDateRange(
             @Param("userId") String userId,
@@ -1592,6 +1218,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
         OR u.user_name = :assignedBy
     )
     AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate
+    AND u.status != 'inactive' and u.entity = 'IN'
 """, nativeQuery = true)
     List<SubmittedCandidateDTO> findSubmittedCandidatesByAssignedByAndDateRange(
             @Param("assignedBy") String assignedBy,
@@ -1814,43 +1441,8 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
             @Param("endDate") LocalDate endDate
     );
 
-//    @Query(value = """
-//    SELECT
-//        ur.user_id AS recruiterId,
-//        ur.user_name AS recruiterName,
-//        r.job_id AS jobId,
-//        r.client_name as clientName,
-//        COALESCE(b.on_boarded_by, 'N/A') AS bdm,
-//        COALESCE(r.assigned_by, 'N/A') AS teamlead,
-//        r.job_title AS technology,
-//        DATE_FORMAT(r.requirement_added_time_stamp, '%Y-%m-%d') AS postedDate,
-//        DATE_FORMAT(r.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedDateTime,
-//                                                                                 (
-//            SELECT COUNT(DISTINCT cs.submission_id)
-//            FROM candidate_submissions cs
-//            WHERE cs.job_id = r.job_id
-//              AND cs.user_id = ur.user_id
-//              AND (
-//                :isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE
-//                OR :isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate
-//              )
-//        ) AS numberOfSubmissions
-//    FROM requirements_model r
-//    LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
-//    LEFT JOIN user_details ur ON jr.recruiter_id = ur.user_id
-//    LEFT JOIN bdm_client b ON r.client_name = b.client_name
-//    WHERE (r.status = 'In Progress' OR r.status = 'Submitted')
-//      AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
-//    GROUP BY ur.user_id, ur.user_name, r.job_id, b.on_boarded_by, r.assigned_by, r.job_title, DATE(r.updated_at)
-//""", nativeQuery = true)
-//    List<Object[]> findInProgressRequirementsByDateRange(
-//            @Param("startDate") LocalDate startDate,
-//            @Param("endDate") LocalDate endDate,
-//            @Param("isToday") boolean isToday
-//    );
-
     @Query(value = """
-(
+    (
     -- Part 1: EMPLOYEES with no active assigned jobs
     SELECT DISTINCT
         ud.user_id AS recruiterId,
@@ -1884,6 +1476,7 @@ WHERE TRIM(BOTH '\"' FROM r.assigned_by) = :username
           WHERE jr.recruiter_id = ud.user_id
             AND r.status IN ('In Progress', 'Submitted')
             AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
+            AND ud.status = 'ACTIVE' AND ud.entity = 'IN'
       )
 )
 UNION ALL
@@ -1951,27 +1544,5 @@ ORDER BY recruiterName
     boolean existsByClientNameAndRequirementAddedTimeStampAfter(@Param("clientName") String clientName,
                                                                 @Param("date") LocalDateTime date);
 
-//
-//    @Modifying
-//    @Transactional
-//    @Query(value = """
-//        UPDATE requirements_model r
-//        SET r.status = 'Closed'
-//        WHERE r.status NOT IN ('Closed')
-//          AND (
-//              DATEDIFF(CURDATE(), COALESCE(r.updated_at, r.requirement_added_time_stamp)) > 90
-//          )
-//          AND NOT EXISTS (
-//              SELECT 1 FROM candidate_submissions cs
-//              WHERE cs.job_id = r.job_id
-//          )
-//          AND NOT EXISTS (
-//                     SELECT 1
-//                     FROM job_recruiters jr
-//                     JOIN candidates c ON jr.recruiter_id = c.user_id
-//                     WHERE jr.job_id = r.job_id
-//          );
-//        """, nativeQuery = true)
-//    int autoCloseOutdatedRequirements();
 }
 
