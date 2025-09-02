@@ -24,7 +24,7 @@ public class EmailService {
             helper.setTo(to); // recipient's email
             helper.setSubject(subject); // email subject
             helper.setText(text,true); // email body
-            helper.setFrom("notificationsdataqinc@gmail.com");
+            helper.setFrom("notifications@adroitinnovative.com"); // 👈 force sender
 
             javaMailSender.send(mimeMessage);
         }
