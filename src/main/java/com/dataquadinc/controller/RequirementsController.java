@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.dataquadinc.client.UserFeignClient;
 import com.dataquadinc.dto.*;
 import com.dataquadinc.exceptions.*;
 import com.dataquadinc.model.RequirementsModel;
@@ -42,7 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 		"http://192.168.0.203:3000/",
 		"http://192.168.0.167:3000/"})
 @RestController
-@RequestMapping("/requirements")
+	@RequestMapping("/requirements")
 //@CrossOrigin("*")
 public class RequirementsController {
 
@@ -52,6 +53,8 @@ public class RequirementsController {
 	@Autowired
 	private EmailService emailService ;
 
+	@Autowired
+	UserFeignClient userFeignClient;
 
 	@Autowired
 	private RequirementsDao requirementsDao;
@@ -641,6 +644,39 @@ public class RequirementsController {
 
 		return requirements;
 	}
+	@GetMapping("/coordinatorRequirements/{id}")
+	public List<RequirementsDto> getCoordinatorsRequirements(@PathVariable("id") String id) {
+
+		// Fetch team assignments
+		List<TeamAssignment> assignments = userFeignClient.getUserByUserID(id)
+				.getBody()
+				.getData()
+				.getTeamAssignments();
+
+		// Handle null/empty list
+		if (assignments == null || assignments.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Get first teamLeadId
+		String teamLeadId = assignments.get(0).getTeamLeadId();
+
+		// Fetch requirements
+		List<RequirementsDto> requirements = service.getRequirementsByAssignedBy(teamLeadId);
+
+		// Clean recruiterName (if needed)
+		for (RequirementsDto dto : requirements) {
+			if (dto.getRecruiterName() != null) {
+				Set<String> cleanedNames = dto.getRecruiterName().stream()
+						.map(recruiter -> recruiter.replaceAll("[\\[\\]\"]", "").trim())
+						.collect(Collectors.toSet());
+				dto.setRecruiterName(cleanedNames);
+			}
+		}
+
+		return requirements;
+	}
+
 
 
 	@GetMapping("/teamleadrequirements/{userId}/filterByDate")
