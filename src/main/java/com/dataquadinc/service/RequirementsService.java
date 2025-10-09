@@ -1115,7 +1115,14 @@ public class RequirementsService {
 
 		// 1️⃣ Fetch role and username
 		Tuple roleInfo = requirementsDao.getUserRoleAndUsername(userId);
+		if (roleInfo == null) {
+			log.warn("No role information found for user ID: {}", userId);
+			// You can either throw a custom exception or return an empty response
+			throw new ResourceNotFoundException("User role information not found for userId: " + userId);
+		}
 		String role = roleInfo.get("role", String.class);
+
+
 		String username = roleInfo.get("userName", String.class);
 		log.info("✅ Retrieved role '{}' and username '{}' for userId: {}", role, username, userId);
 
