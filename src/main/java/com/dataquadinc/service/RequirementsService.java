@@ -1548,6 +1548,12 @@ public class RequirementsService {
 		Object rawUpdatedDateTime = row[8];
 		Object rawNumberOfSubmissions = row[9];
 		Object rawNumberOfScreenReject = row[10];
+		String jobTitle = (String) row[11];
+		String jobMode = (String) row[12];
+		String jobType = (String) row[13];
+		String experienceRequired = (String) row[14];
+		String relevantExperience = (String) row[15];
+
 
 		LocalDate postedDate = parseToLocalDate(rawPostedDate);
 		LocalDateTime updatedDateTime = parseToLocalDateTime(rawUpdatedDateTime);
@@ -1573,7 +1579,12 @@ public class RequirementsService {
 				postedDate,
 				updatedDateTime,
 				numberOfSubmissions,
-				numberOfScreenReject
+				numberOfScreenReject,
+				jobTitle,
+				jobMode,
+				jobType,
+				experienceRequired,
+				relevantExperience
 		);
 	}
 
@@ -1664,8 +1675,6 @@ public class RequirementsService {
 		return "✅ Email Sent Successfully for: " + recruiterName;
 	}
 
-
-
 	private String buildTeamleadWiseEmail(List<InProgressRequirementDTO> requirements) {
 		StringBuilder sb = new StringBuilder();
 
@@ -1686,16 +1695,13 @@ public class RequirementsService {
 		sb.append("<p><strong>Total Jobs:</strong> ").append(distinctJobCount).append("</p><br>");
 		sb.append("<p><strong>Total Submissions:</strong> ").append(totalSubmissionCount).append("</p><br>");
 
-		// 🔍 Filter out entries with blank/null teamlead
 		List<InProgressRequirementDTO> filtered = requirements.stream()
 				.filter(r -> r.getTeamlead() != null && !r.getTeamlead().isBlank())
 				.toList();
 
-		// 🔄 Group by teamlead
-		Map<String, List<InProgressRequirementDTO>> groupedByTeamlead = filtered.stream()
-				.collect(Collectors.groupingBy(InProgressRequirementDTO::getTeamlead));
+		Map<String, List<InProgressRequirementDTO>> groupedByTeamlead =
+				filtered.stream().collect(Collectors.groupingBy(InProgressRequirementDTO::getTeamlead));
 
-		// 📌 Sort teamleads alphabetically
 		List<String> sortedTeamleads = new ArrayList<>(groupedByTeamlead.keySet());
 		sortedTeamleads.sort(String.CASE_INSENSITIVE_ORDER);
 
@@ -1718,14 +1724,12 @@ public class RequirementsService {
 					.mapToLong(InProgressRequirementDTO::getNumberOfSubmissions)
 					.sum();
 
-			// ⬇️ Section Header
 			sb.append("<h3>Team Lead: ").append(teamlead).append("</h3>");
 			sb.append("<p>👤 Recruiters: ").append(distinctRecruiters)
 					.append(" | 📌 Jobs: ").append(distinctJobs)
 					.append(" | 📥 Submissions: ").append(totalSubmissions)
 					.append("</p>");
 
-			// ⬇️ Table
 			sb.append("<table style='border-collapse: collapse; width: 100%; margin-bottom: 30px;' border='1' cellspacing='0' cellpadding='8'>");
 			sb.append("<thead style='background-color: #f2f2f2;'>")
 					.append("<tr>")
@@ -1733,6 +1737,11 @@ public class RequirementsService {
 					.append("<th>BDM</th>")
 					.append("<th>Job ID</th>")
 					.append("<th>Client</th>")
+					.append("<th>Job Title</th>")
+					.append("<th>Job Mode</th>")
+					.append("<th>Job Type</th>")
+					.append("<th>Experience Required</th>")
+					.append("<th>Relevant Experience</th>")
 					.append("<th>Technologies</th>")
 					.append("<th>Submissions</th>")
 					.append("</tr>")
@@ -1744,6 +1753,11 @@ public class RequirementsService {
 						.append("<td>").append(Optional.ofNullable(req.getBdm()).orElse("-")).append("</td>")
 						.append("<td>").append(Optional.ofNullable(req.getJobId()).orElse("-")).append("</td>")
 						.append("<td>").append(Optional.ofNullable(req.getClientName()).orElse("-")).append("</td>")
+						.append("<td>").append(Optional.ofNullable(req.getJobTitle()).orElse("-")).append("</td>")
+						.append("<td>").append(Optional.ofNullable(req.getJobMode()).orElse("-")).append("</td>")
+						.append("<td>").append(Optional.ofNullable(req.getJobType()).orElse("-")).append("</td>")
+						.append("<td>").append(Optional.ofNullable(req.getExperienceRequired()).orElse("-")).append("</td>")
+						.append("<td>").append(Optional.ofNullable(req.getRelevantExperience()).orElse("-")).append("</td>")
 						.append("<td>").append(Optional.ofNullable(req.getTechnology()).orElse("-")).append("</td>")
 						.append("<td>").append(req.getNumberOfSubmissions()).append("</td>")
 						.append("</tr>");
@@ -1754,8 +1768,6 @@ public class RequirementsService {
 
 		return sb.toString();
 	}
-
-
 	private String buildRecruiterWiseEmail(List<InProgressRequirementDTO> requirements, String recruiterName) {
 		StringBuilder sb = new StringBuilder();
 
@@ -1769,6 +1781,11 @@ public class RequirementsService {
 				.append("<th>Team Lead</th>")
 				.append("<th>Job ID</th>")
 				.append("<th>Client</th>")
+				.append("<th>Job Title</th>")
+				.append("<th>Job Mode</th>")
+				.append("<th>Job Type</th>")
+				.append("<th>Experience Required</th>")
+				.append("<th>Relevant Experience</th>")
 				.append("<th>Technologies</th>")
 				.append("<th>Submissions</th>")
 				.append("</tr>");
@@ -1780,13 +1797,17 @@ public class RequirementsService {
 					.append("<td>").append(Optional.ofNullable(req.getTeamlead()).orElse("-")).append("</td>")
 					.append("<td>").append(Optional.ofNullable(req.getJobId()).orElse("-")).append("</td>")
 					.append("<td>").append(Optional.ofNullable(req.getClientName()).orElse("-")).append("</td>")
+					.append("<td>").append(Optional.ofNullable(req.getJobTitle()).orElse("-")).append("</td>")
+					.append("<td>").append(Optional.ofNullable(req.getJobMode()).orElse("-")).append("</td>")
+					.append("<td>").append(Optional.ofNullable(req.getJobType()).orElse("-")).append("</td>")
+					.append("<td>").append(Optional.ofNullable(req.getExperienceRequired()).orElse("-")).append("</td>")
+					.append("<td>").append(Optional.ofNullable(req.getRelevantExperience()).orElse("-")).append("</td>")
 					.append("<td>").append(Optional.ofNullable(req.getTechnology()).orElse("-")).append("</td>")
 					.append("<td>").append(req.getNumberOfSubmissions()).append("</td>")
 					.append("</tr>");
 		}
 
 		sb.append("</tbody></table>");
-
 		return sb.toString();
 	}
 

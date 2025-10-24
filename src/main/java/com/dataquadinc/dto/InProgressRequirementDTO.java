@@ -22,6 +22,12 @@ public class InProgressRequirementDTO {
     private LocalDateTime updatedDateTime;
     private long numberOfSubmissions;
     private long numberOfScreenReject;
+    private String jobTitle;
+    private String jobMode;
+    private String jobType;
+    private String experienceRequired;
+    private String relevantExperience;
+
 
     public InProgressRequirementDTO(
             String recruiterId,
@@ -34,7 +40,13 @@ public class InProgressRequirementDTO {
             LocalDate postedDate,
             LocalDateTime updatedDateTime,
             long numberOfSubmissions,
-            long numberOfScreenReject
+            long numberOfScreenReject,
+            String jobTitle,
+            String jobMode,
+            String jobType,
+            String experienceRequired,
+            String relevantExperience
+
     ) {
         this.recruiterId = recruiterId;
         this.recruiterName = recruiterName;
@@ -47,6 +59,11 @@ public class InProgressRequirementDTO {
         this.updatedDateTime = updatedDateTime;
         this.numberOfSubmissions = numberOfSubmissions;
         this.numberOfScreenReject = numberOfScreenReject;
+        this.jobTitle = jobTitle;
+        this.jobMode = jobMode;
+        this.jobType = jobType;
+        this.experienceRequired = experienceRequired;
+        this.relevantExperience = relevantExperience;
     }
 
 
@@ -136,5 +153,45 @@ public class InProgressRequirementDTO {
 
     public void setNumberOfScreenReject(long numberOfScreenReject) {
         this.numberOfScreenReject = numberOfScreenReject;
+    }
+
+    public String getJobMode() {
+        return jobMode;
+    }
+
+    public void setJobMode(String jobMode) {
+        this.jobMode = jobMode;
+    }
+
+    public String getJobType() {
+        return jobType;
+    }
+
+    public void setJobType(String jobType) {
+        this.jobType = jobType;
+    }
+
+    public String getExperienceRequired() {
+        return experienceRequired;
+    }
+
+    public void setExperienceRequired(String experienceRequired) {
+        this.experienceRequired = experienceRequired;
+    }
+
+    public String getRelevantExperience() {
+        return relevantExperience;
+    }
+
+    public void setRelevantExperience(String relevantExperience) {
+        this.relevantExperience = relevantExperience;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
     }
 }

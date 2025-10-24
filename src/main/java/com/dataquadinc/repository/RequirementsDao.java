@@ -242,7 +242,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
            )))
       AND b.client_name IS NOT NULL 
       AND idt.interview_date_time IS NOT NULL
-      AND DATE(idt.timestamp) BETWEEN :startDate AND :endDate
+      AND DATE(idt.interview_date_time) BETWEEN :startDate AND :endDate
     """, nativeQuery = true)
     List<Tuple> findAllInterviewsByClientNameDateFilter(
             @Param("clientName") String clientName,
@@ -291,7 +291,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
          AND JSON_SEARCH(idt.interview_status, 'one', 'PLACED', NULL, '$[*].status') IS NOT NULL)
         OR UPPER(idt.interview_status) = 'PLACED'
       )
-      AND DATE(idt.timestamp) BETWEEN :startDate AND :endDate
+      AND DATE(idt.interview_date_time) BETWEEN :startDate AND :endDate
     """, nativeQuery = true)
     List<Tuple> findAllPlacementsByClientNameDateFilter(
             @Param("clientName") String clientName,
@@ -1498,7 +1498,12 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
         NULL AS postedDate,
         NULL AS updatedDateTime,
         0 AS numberOfSubmissions,
-        0 AS numberOfScreenReject
+        0 AS numberOfScreenReject,
+        NULL AS jobTitle,
+        NULL AS jobMode,
+        NULL AS jobType,
+        NULL AS exexperienceRequired,
+        NULL AS relevantExperience
     FROM user_details ud
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
@@ -1561,7 +1566,12 @@ UNION ALL
                 (:isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE)
                 OR (:isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate)
               )
-        ) AS numberOfScreenReject
+        ) AS numberOfScreenReject,
+        r.job_title AS jobTitle,
+        r.job_mode AS jobMode,
+        r.job_type AS jobType,
+        r.experience_required AS experienceRequired,
+        r.relevant_experience AS relevantExperience
     FROM user_details ud
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
