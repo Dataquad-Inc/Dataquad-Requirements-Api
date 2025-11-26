@@ -29,7 +29,7 @@ jobs:
       - name: Get Latest Version
         id: version
         run: |
-          LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/dataquad123/dataquad-prod-requirements/tags/ | jq -r '.results[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/mulya123/dataquad-prod-requirements/tags/ | jq -r '.results[].name' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
 
           if [ -z "$LATEST_VERSION" ]; then
             NEW_VERSION="1.0.0"
@@ -54,21 +54,21 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t dataquad123/dataquad-prod-requirements:${{ env.IMAGE_TAG }} .
-          docker tag dataquad123/dataquad-prod-requirements:${{ env.IMAGE_TAG }} dataquad123/dataquad-prod-requirements:latest
+          docker build -t mulya123/dataquad-prod-requirements:${{ env.IMAGE_TAG }} .
+          docker tag mulya123/dataquad-prod-requirements:${{ env.IMAGE_TAG }} mulya123/dataquad-prod-requirements:latest
 
       - name: Push Docker Image
         run: |
-          docker push dataquad123/dataquad-prod-requirements:${{ env.IMAGE_TAG }}
-          docker push dataquad123/dataquad-prod-requirements:latest
+          docker push mulya123/dataquad-prod-requirements:${{ env.IMAGE_TAG }}
+          docker push mulya123/dataquad-prod-requirements:latest
 
       - name: Delete Old Images (Keep Only Last 10)
         run: |
-          OLD_TAGS=$(curl -s -u ${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }} "https://hub.docker.com/v2/repositories/dataquad123/dataquad-prod-requirements/tags/" \
+          OLD_TAGS=$(curl -s -u ${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }} "https://hub.docker.com/v2/repositories/mulya123/dataquad-prod-requirements/tags/" \
             | jq -r '.results[].name' \
             | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
             | sort -V | head -n -10)
 
           for TAG in $OLD_TAGS; do
-            curl -X DELETE -u ${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }} "https://hub.docker.com/v2/repositories/dataquad123/dataquad-prod-requirements/tags/$TAG/"
+            curl -X DELETE -u ${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }} "https://hub.docker.com/v2/repositories/mulya123/dataquad-prod-requirements/tags/$TAG/"
           done
