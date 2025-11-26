@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-slim AS builder
+FROM eclipse-temurin:17-jdk AS builder
 
 # Install Maven and curl
 RUN apt-get update && apt-get install -y maven curl ca-certificates
@@ -21,7 +21,7 @@ RUN mvn clean package -DskipTests
 # ------------------------------------
 # Final image
 # ------------------------------------
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk
 
 # Set working directory
 WORKDIR /app
