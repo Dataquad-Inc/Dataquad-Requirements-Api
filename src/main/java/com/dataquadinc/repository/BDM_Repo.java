@@ -201,11 +201,13 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
 
 
     @Query(value = """
-    SELECT COUNT(*) 
-    FROM bdm_client 
-    WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
-    AND DATE(created_at) BETWEEN :startDate AND :endDate
-""", nativeQuery = true)
+                SELECT COUNT(*)
+                FROM bdm_client bc
+                JOIN user_details ud ON ud.user_name = bc.on_boarded_by
+                WHERE ud.user_id = :userId
+                  AND bc.status = 'ACTIVE'
+                  AND DATE(bc.created_at) BETWEEN :startDate AND :endDate
+            """, nativeQuery = true)
     long countClientsByUserIdAndDateRange(
             @Param("userId") String userId,
             @Param("startDate") LocalDate startDate,
@@ -216,6 +218,7 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     SELECT client_name 
     FROM bdm_client 
     WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
+    AND status = 'ACTIVE'
     AND DATE(created_at) BETWEEN :startDate AND :endDate
 """, nativeQuery = true)
     List<String> findClientNamesByUserIdAndDateRange(
