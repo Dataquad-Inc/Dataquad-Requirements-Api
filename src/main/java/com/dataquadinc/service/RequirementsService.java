@@ -518,6 +518,23 @@ public class RequirementsService {
 		return new PagedResponse<>(dtoList, page, size, requirementsPage.getTotalElements());
 	}
 
+	public PagedResponse<RequirementsDto> getRequirementsByDateRangeWithPaginationAndSearch(LocalDate startDate, LocalDate endDate, int page, int size, String search) {
+		// Create Pageable object
+		Pageable pageable = PageRequest.of(page, size);
+		
+		// Fetch paginated data from repository
+		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageable(startDate, endDate, search, pageable);
+		
+		// Convert to DTOs
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
+				.map(this::mapToRequirementsDto)
+				.collect(Collectors.toList());
+		
+		logger.info("Fetched {} requirements (page {}, size {}, search: '{}') between {} and {}", dtoList.size(), page, size, search, startDate, endDate);
+		
+		return new PagedResponse<>(dtoList, page, size, requirementsPage.getTotalElements());
+	}
+
 	private RequirementsDto mapToRequirementsDto(RequirementsModel requirement) {
 		RequirementsDto dto = new RequirementsDto();
 		List<String> recruiterNames = requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());

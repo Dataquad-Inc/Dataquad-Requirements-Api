@@ -308,21 +308,33 @@ public class RequirementsController {
 	@GetMapping("/filterByDate")
 	public ResponseEntity<?> getRequirementsByDateRange(
 			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "10") int size,
+			@RequestParam(value = "search", required = false) String search) {
 
-		List<RequirementsDto> requirements = service.getRequirementsByDateRange(startDate, endDate);
-
-		for (RequirementsDto dto : requirements) {
-			Set<String> cleanedNames = dto.getRecruiterName().stream()
-					.map(name -> name.replaceAll("[\\[\\]\"]", ""))
-					.collect(Collectors.toSet());
-			dto.setRecruiterName(cleanedNames);
+		// Validate pagination parameters
+		if (page < 0) {
+			return ResponseEntity.badRequest().body("Page number cannot be negative");
+		}
+		if (size <= 0 || size > 100) {
+			return ResponseEntity.badRequest().body("Size must be between 1 and 100");
 		}
 
-		// ✅ This log will now appear last
-		ResponseEntity<?> response = new ResponseEntity<>(requirements, HttpStatus.OK);
-		logger.info("✅ Fetched {} requirements between {} and {}", requirements.size(), startDate, endDate);
-		return response;
+		PagedResponse<RequirementsDto> pagedResponse = service.getRequirementsByDateRangeWithPaginationAndSearch(startDate, endDate, page, size, search);
+
+		// Clean up recruiterName field for each requirement
+		for (RequirementsDto dto : pagedResponse.getContent()) {
+			if (dto.getRecruiterName() != null) {
+				Set<String> cleanedNames = dto.getRecruiterName().stream()
+						.map(name -> name.replaceAll("[\\[\\]\"]", ""))
+						.collect(Collectors.toSet());
+				dto.setRecruiterName(cleanedNames);
+			}
+		}
+
+		logger.info("✅ Fetched {} requirements between {} and {}", pagedResponse.getContent().size(), startDate, endDate);
+		return ResponseEntity.ok(pagedResponse);
 	}
 
 
