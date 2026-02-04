@@ -7,6 +7,8 @@ import java.util.Optional;
 
 import com.dataquadinc.dto.*;
 import jakarta.persistence.Tuple;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -507,6 +509,42 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
 
     @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
     List<RequirementsModel> findByRequirementAdded();
+
+    @Query(value = """
+    SELECT r FROM RequirementsModel r 
+    WHERE r.status IN ('Submitted','In Progress')
+    AND (
+        LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    ORDER BY r.requirementAddedTimeStamp DESC
+    """)
+    List<RequirementsModel> findByRequirementAddedWithSearch(@Param("search") String search);
+
+    @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress') ORDER BY r.requirementAddedTimeStamp DESC")
+    Page<RequirementsModel> findByRequirementAddedPageable(Pageable pageable);
+
+    @Query("""
+    SELECT r FROM RequirementsModel r 
+    WHERE r.status IN ('Submitted','In Progress')
+    AND (
+        :search IS NULL OR :search = '' OR
+        LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    ORDER BY r.requirementAddedTimeStamp DESC
+    """)
+    Page<RequirementsModel> findByRequirementAddedWithSearchPageable(@Param("search") String search, Pageable pageable);
 
 
     @Query(value = """

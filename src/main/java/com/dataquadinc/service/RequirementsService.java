@@ -24,6 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -491,6 +494,56 @@ public class RequirementsService {
 		} else {
 			return dtoList;
 		}
+	}
+
+	public PagedResponse<RequirementsDto> getRequirementsWithPaginationAndSearch(int page, int size, String search) {
+		// Create Pageable object
+		Pageable pageable = PageRequest.of(page, size);
+		
+		// Fetch paginated data from repository
+		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageable(search, pageable);
+		
+		// Convert to DTOs
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
+				.map(this::mapToRequirementsDto)
+				.collect(Collectors.toList());
+		
+		logger.info("Fetched {} requirements (page {}, size {}, search: '{}')", dtoList.size(), page, size, search);
+		
+		return new PagedResponse<>(dtoList, page, size, requirementsPage.getTotalElements());
+	}
+
+	private RequirementsDto mapToRequirementsDto(RequirementsModel requirement) {
+		RequirementsDto dto = new RequirementsDto();
+		List<String> recruiterNames = requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());
+
+		dto.setJobId(requirement.getJobId());
+		dto.setJobTitle(requirement.getJobTitle());
+		dto.setClientName(requirement.getClientName());
+		dto.setJobDescription(requirement.getJobDescription());
+		dto.setJobDescriptionBlob(requirement.getJobDescriptionBlob());
+		dto.setJobType(requirement.getJobType());
+		dto.setLocation(requirement.getLocation());
+		dto.setJobMode(requirement.getJobMode());
+		dto.setExperienceRequired(requirement.getExperienceRequired());
+		dto.setNoticePeriod(requirement.getNoticePeriod());
+		dto.setRelevantExperience(requirement.getRelevantExperience());
+		dto.setQualification(requirement.getQualification());
+		dto.setSalaryPackage(requirement.getSalaryPackage());
+		dto.setNoOfPositions(requirement.getNoOfPositions());
+		dto.setRequirementAddedTimeStamp(requirement.getRequirementAddedTimeStamp());
+		dto.setRecruiterIds(requirement.getRecruiterIds());
+		dto.setStatus(requirement.getStatus());
+		dto.setRecruiterName(new HashSet<>(recruiterNames));
+		dto.setAssignedBy(requirement.getAssignedBy());
+		dto.setUpdatedAt(requirement.getUpdatedAt());
+
+		// Submissions and Interviews
+		String jobId = requirement.getJobId();
+		dto.setNumberOfSubmissions(requirementsDao.getNumberOfSubmissionsByJobId(jobId));
+		dto.setNumberOfInterviews(requirementsDao.getNumberOfInterviewsByJobId(jobId));
+
+		return dto;
 	}
 
 
