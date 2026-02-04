@@ -526,12 +526,13 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     """)
     List<RequirementsModel> findByRequirementAddedWithSearch(@Param("search") String search);
 
-    @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress') ORDER BY r.requirementAddedTimeStamp DESC")
-    Page<RequirementsModel> findByRequirementAddedPageable(Pageable pageable);
+    @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress') AND DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate ORDER BY r.requirementAddedTimeStamp DESC")
+    Page<RequirementsModel> findByRequirementAddedPageable(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 
     @Query("""
     SELECT r FROM RequirementsModel r 
     WHERE r.status IN ('Submitted','In Progress')
+    AND DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate
     AND (
         :search IS NULL OR :search = '' OR
         LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR
@@ -544,7 +545,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     )
     ORDER BY r.requirementAddedTimeStamp DESC
     """)
-    Page<RequirementsModel> findByRequirementAddedWithSearchPageable(@Param("search") String search, Pageable pageable);
+    Page<RequirementsModel> findByRequirementAddedWithSearchPageable(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, @Param("search") String search, Pageable pageable);
 
 
     @Query(value = """

@@ -497,11 +497,16 @@ public class RequirementsService {
 	}
 
 	public PagedResponse<RequirementsDto> getRequirementsWithPaginationAndSearch(int page, int size, String search) {
+		// Get current month date range
+		LocalDate[] dateRange = getCurrentMonthDateRange();
+		LocalDate startDate = dateRange[0];
+		LocalDate endDate = dateRange[1];
+		
 		// Create Pageable object
 		Pageable pageable = PageRequest.of(page, size);
 		
 		// Fetch paginated data from repository
-		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageable(search, pageable);
+		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageable(startDate, endDate, search, pageable);
 		
 		// Convert to DTOs
 		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
@@ -544,6 +549,12 @@ public class RequirementsService {
 		dto.setNumberOfInterviews(requirementsDao.getNumberOfInterviewsByJobId(jobId));
 
 		return dto;
+	}
+
+	public LocalDate[] getCurrentMonthDateRange() {
+		LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+		LocalDate endOfMonth = startOfMonth.plusMonths(1).minusDays(1);
+		return new LocalDate[]{startOfMonth, endOfMonth};
 	}
 
 
