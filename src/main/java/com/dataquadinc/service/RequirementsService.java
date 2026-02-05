@@ -499,8 +499,8 @@ public class RequirementsService {
 	public PagedResponse<RequirementsDto> getRequirementsWithPaginationAndSearch(int page, int size, String search) {
 		// Get current month date range
 		LocalDate[] dateRange = getCurrentMonthDateRange();
-		LocalDate startDate = dateRange[0];
-		LocalDate endDate = dateRange[1];
+		LocalDate startDate = null;
+		LocalDate endDate = null;
 		
 		// Create Pageable object
 		Pageable pageable = PageRequest.of(page, size);
@@ -523,7 +523,7 @@ public class RequirementsService {
 		Pageable pageable = PageRequest.of(page, size);
 		
 		// Fetch paginated data from repository
-		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageable(startDate, endDate, search, pageable);
+		Page<RequirementsModel> requirementsPage = requirementsDao.findByRequirementAddedWithSearchPageableWithDateFilter(startDate, endDate, search, pageable);
 		
 		// Convert to DTOs
 		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
