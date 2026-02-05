@@ -7,6 +7,8 @@ import java.util.Optional;
 
 import com.dataquadinc.dto.*;
 import jakarta.persistence.Tuple;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -507,6 +509,63 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
 
     @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
     List<RequirementsModel> findByRequirementAdded();
+
+    @Query("""
+            SELECT r FROM RequirementsModel r
+            WHERE r.status IN ('Submitted','In Progress')
+            
+            AND (
+                (:startDate IS NULL OR :endDate IS NULL)
+                OR DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate
+            )
+            
+            AND (
+                :search IS NULL OR :search = '' OR
+                LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))
+            )
+            
+            ORDER BY r.requirementAddedTimeStamp DESC
+            """)
+    Page<RequirementsModel> findByRequirementAddedWithSearchPageable(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("""
+            SELECT r FROM RequirementsModel r
+            WHERE
+            
+            (
+                (:startDate IS NULL OR :endDate IS NULL)
+                OR DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate
+            )
+            
+            AND (
+                :search IS NULL OR :search = '' OR
+                LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))
+            )
+            
+            ORDER BY r.requirementAddedTimeStamp DESC
+            """)
+    Page<RequirementsModel> findByRequirementAddedWithSearchPageableWithDateFilter(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("search") String search,
+            Pageable pageable);
+
 
 
     @Query(value = """
