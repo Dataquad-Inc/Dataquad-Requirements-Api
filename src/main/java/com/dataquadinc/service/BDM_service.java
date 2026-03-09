@@ -185,6 +185,31 @@ public class BDM_service {
                 .collect(Collectors.toList());
 }
 
+    public List<BDM_Dto> getClientsByUserId(String userId) {
+
+        // Step 1: get userName from DB
+        String userName = requirementsDao.findUserNameByUserId(userId);
+
+        if (userName == null) {
+            throw new ResourceNotFoundException("User not found with ID: " + userId);
+        }
+
+        // Step 2: fetch clients onboarded by this user
+        List<BDM_Client> clients = repository.findByOnBoardedBy(userName);
+
+        // Step 3: convert to DTO
+        return clients.stream()
+                .map(client -> {
+                    BDM_Dto dto = convertToDTO(client);
+
+                    int requirementCount = repository.countRequirementsByClientName(client.getClientName());
+                    dto.setNumberOfRequirements(requirementCount);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void evaluateClientStatuses() {
         LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);

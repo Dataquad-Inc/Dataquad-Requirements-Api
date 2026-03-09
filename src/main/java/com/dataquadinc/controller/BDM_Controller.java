@@ -89,6 +89,16 @@ public class BDM_Controller {
     }
 
 
+    @GetMapping("/bdm/getClients/{userId}")
+    public ResponseEntity<ResponseBean> getClientsByUser(@PathVariable String userId) {
+
+        List<BDM_Dto> clients = service.getClientsByUserId(userId);
+
+        return ResponseEntity.ok(
+                ResponseBean.successResponse("Clients fetched successfully", clients)
+        );
+    }
+
 
     @GetMapping("/bdm/{id}")
     public ResponseEntity<ResponseBean> getClientById(@PathVariable String id) {

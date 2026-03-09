@@ -227,7 +227,11 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
             @Param("endDate") LocalDate endDate
     );
 
+    @Query(value = "SELECT user_name FROM users WHERE user_id = :userId", nativeQuery = true)
+    String findUserNameByUserId(@Param("userId") String userId);
+
     @Query(value = "SELECT COUNT(*) FROM requirements_model WHERE client_name = :clientName", nativeQuery = true)
     int countRequirementsByClientName(@Param("clientName") String clientName);
 
+    List<BDM_Client> findByOnBoardedBy(String userName);
 }
