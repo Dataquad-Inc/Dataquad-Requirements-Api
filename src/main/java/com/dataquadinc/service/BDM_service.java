@@ -185,6 +185,23 @@ public class BDM_service {
                 .collect(Collectors.toList());
 }
 
+    public List<Map<String, Object>> getOverallClients() {
+
+        List<Object[]> results = repository.findAllOverallClients();
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("clientId", row[0]);
+            map.put("clientName", row[1]);
+            map.put("bdmName", row[2]);
+            response.add(map);
+        }
+
+        return response;
+    }
+
     public List<BDM_Dto> getClientsByUserId(String userId) {
 
         // Step 1: get userName from DB
