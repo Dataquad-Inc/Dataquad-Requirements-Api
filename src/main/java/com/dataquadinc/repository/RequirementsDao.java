@@ -686,26 +686,20 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
                 ), 0) AS numberOfClients,
 
             
-            COALESCE((
-                SELECT COUNT(DISTINCT r2.job_id)
-                FROM requirements_model r2
-                WHERE (
-                    REPLACE(REPLACE(r2.assigned_by, '\\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\\"', ''), '"', '')
-                    OR EXISTS (
-                        SELECT 1\s
-                        FROM production.job_recruiters jr
-                        WHERE jr.job_id = r2.job_id
-                          AND jr.recruiter_id = u.user_id
-                    )
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM candidate_submissions cs
-                    WHERE cs.job_id = r2.job_id
-                      AND cs.user_id = u.user_id
-                      AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate
-                )
-            ), 0) AS numberOfRequirements,
+          COALESCE((
+    SELECT COUNT(DISTINCT r2.job_id)
+    FROM requirements_model r2
+    WHERE (
+        TRIM(BOTH '"' FROM r2.assigned_by) = u.user_name
+        OR EXISTS (
+            SELECT 1
+            FROM job_recruiters jr
+            WHERE jr.job_id = r2.job_id
+            AND jr.recruiter_id = u.user_id
+        )
+    )
+    AND DATE(r2.requirement_added_time_stamp) BETWEEN :startDate AND :endDate
+), 0) AS numberOfRequirements,
 
             COALESCE((
                 SELECT COUNT(*)
