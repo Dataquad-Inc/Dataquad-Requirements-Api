@@ -61,6 +61,9 @@ public class BDM_Client {
     @Column(columnDefinition = "LONGBLOB")
     private byte[] documentedData;  // Stores actual file content
 
+    @Column(length = 100)
+    private String location;
+
     @PrePersist
     public void prePersist() {
         if (this.id == null || this.id.isEmpty()) {
@@ -232,4 +235,8 @@ public class BDM_Client {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    public String getLocation() { return location; }
+
+    public void setLocation(String location) { this.location = location; }
 }

@@ -143,12 +143,16 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
 
     @Query(value = """
     SELECT 
-        id,
-        client_name,
-        on_boarded_by
-    FROM bdm_client
+        b.id,
+        b.client_name,
+        b.on_boarded_by,
+        b.client_website_url,
+        b.client_linked_in_url,
+        b.client_address,
+        b.location
+    FROM bdm_client b
 """, nativeQuery = true)
-    List<Object[]> findAllOverallClients();
+    List<Object[]> findOverallClients();
 
     @Query(value = """
     SELECT COUNT(*) 

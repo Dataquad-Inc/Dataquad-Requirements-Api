@@ -81,6 +81,7 @@ public class BDM_service {
         dto.setId(client.getId());
         dto.setClientName(client.getClientName());
         dto.setClientAddress(client.getClientAddress());
+        dto.setLocation(client.getLocation());
         dto.setNetPayment(client.getNetPayment());
         dto.setGst(client.getGst());
         dto.setSupportingCustomers(client.getSupportingCustomers());
@@ -104,6 +105,7 @@ public class BDM_service {
         client.setId(dto.getId());
         client.setClientName(dto.getClientName());
         client.setClientAddress(dto.getClientAddress());
+        client.setLocation(dto.getLocation());
         client.setNetPayment(dto.getNetPayment());
         client.setGst(dto.getGst());
         client.setSupportingCustomers(dto.getSupportingCustomers());
@@ -185,17 +187,24 @@ public class BDM_service {
                 .collect(Collectors.toList());
 }
 
+    //@Override
     public List<Map<String, Object>> getOverallClients() {
 
-        List<Object[]> results = repository.findAllOverallClients();
+        List<Object[]> results = repository.findOverallClients();
 
         List<Map<String, Object>> response = new ArrayList<>();
 
-        for (Object[] row : results) {
+        for (Object[] obj : results) {
             Map<String, Object> map = new HashMap<>();
-            map.put("clientId", row[0]);
-            map.put("clientName", row[1]);
-            map.put("bdmName", row[2]);
+
+            map.put("clientId", obj[0]);
+            map.put("clientName", obj[1]);
+            map.put("bdmName", obj[2]);
+            map.put("clientWebsiteUrl", obj[3]);
+            map.put("clientLinkedInUrl", obj[4]);
+            map.put("clientAddress", obj[5]);
+            map.put("location", obj[6] != null ? obj[6] : "Not Available");
+
             response.add(map);
         }
 

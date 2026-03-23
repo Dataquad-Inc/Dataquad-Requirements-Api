@@ -91,11 +91,10 @@ public class BDM_Controller {
     @GetMapping("/bdm/overall-clients")
     public ResponseEntity<ResponseBean> getOverallClients() {
 
+        List<Map<String, Object>> clients = service.getOverallClients();
+
         return ResponseEntity.ok(
-                ResponseBean.successResponse(
-                        "Overall clients fetched successfully",
-                        service.getOverallClients()
-                )
+                ResponseBean.successResponse("Overall clients fetched successfully", clients)
         );
     }
 
