@@ -34,6 +34,7 @@ public class BDM_Dto {
     private String status;
     private String feedBack;
     private int numberOfRequirements;
+    private String location;
 
     public int getNumberOfRequirements() {
         return numberOfRequirements;
@@ -199,6 +200,10 @@ public class BDM_Dto {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    public String getLocation() { return location; }
+
+    public void setLocation(String location) { this.location = location;}
 
 
 
