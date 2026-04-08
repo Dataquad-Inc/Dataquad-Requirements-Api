@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.dataquadinc.model.RequirementsModel;
 
@@ -497,16 +499,16 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     Integer getNumberOfInterviewsByJobId(@Param("jobId") String jobId);
 
 
-    // RequirementsDao.java
-    @Query("SELECT r FROM RequirementsModel r WHERE DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate")
-    List<RequirementsModel> findByRequirementAddedTimeStampBetween(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+    @Query("SELECT r FROM RequirementsModel r WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate")
+    Page<RequirementsModel> findByRequirementAddedTimeStampBetween(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
     );
 
 
     @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
-    List<RequirementsModel> findByRequirementAdded();
+    Page<RequirementsModel> findByRequirementAdded(Pageable pageable);
 
 
     @Query(value = """
@@ -623,10 +625,11 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             "   OR " +
             "   (r.requirementAddedTimeStamp NOT BETWEEN :startDate AND :endDate AND r.status IN ('In Progress', 'Submitted'))" +
             ")")
-    List<RequirementsModel> findJobsAssignedByName(
+    Page<RequirementsModel> findJobsAssignedByName(
             @Param("assignedBy") String assignedBy,
             @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
     );
 
 
