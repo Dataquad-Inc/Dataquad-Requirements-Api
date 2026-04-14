@@ -257,13 +257,14 @@ public class BDM_Controller {
     public ResponseEntity<?> getRequirementsByBdm(
             @PathVariable("userId") String userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search){
 
         try {
             logger.debug("Received request to get requirements for userId: {}", userId);
 
             Page<RequirementsDto> requirements =
-                    service.getRequirementsForBdmByUserId(userId, page, size);
+                    service.getRequirementsForBdmByUserId(userId,search,page, size);
 
             requirements.getContent().forEach(dto -> {
                 Set<String> recruiterNames = dto.getRecruiterName();

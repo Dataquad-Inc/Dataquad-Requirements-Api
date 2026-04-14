@@ -266,9 +266,10 @@ public class RequirementsController {
 	@GetMapping("/getAssignments")
 	public ResponseEntity<?> getRequirements(
 			@RequestParam(defaultValue = "0") int page,
-			@RequestParam(defaultValue = "20") int size) {
+			@RequestParam(defaultValue = "20") int size,
+			@RequestParam(required = false) String search){
 
-		Page<RequirementsDto> requirements = service.getRequirementsDetails(page, size);
+		Page<RequirementsDto> requirements = service.getRequirementsDetails(page, size,search);
 
 		requirements.getContent().forEach(dto -> {
 			Set<String> cleanedNames = dto.getRecruiterName().stream()
@@ -284,11 +285,12 @@ public class RequirementsController {
 	public ResponseEntity<?> getRequirementsByDateRange(
 			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
 			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+			@RequestParam(required = false) String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
 
 		Page<RequirementsDto> requirements =
-				service.getRequirementsByDateRange(startDate, endDate, page, size);
+				service.getRequirementsByDateRange(startDate, endDate,search, page, size);
 
 		requirements.getContent().forEach(dto -> {
 			Set<String> cleanedNames = dto.getRecruiterName().stream()
@@ -636,11 +638,12 @@ public class RequirementsController {
 	@GetMapping("/teamleadrequirements/{id}")
 	public ResponseEntity<?> getRequirementsByAssignedBy(
 			@PathVariable("id") String id,
+			@RequestParam(required = false) String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
 
 		Page<RequirementsDto> requirements =
-				service.getRequirementsByAssignedBy(id, page, size);
+				service.getRequirementsByAssignedBy(id, search,page, size);
 
 		// Clean recruiterName
 		requirements.getContent().forEach(dto -> {
@@ -658,6 +661,7 @@ public class RequirementsController {
 	@GetMapping("/coordinatorRequirements/{id}")
 	public ResponseEntity<?> getCoordinatorsRequirements(
 			@PathVariable("id") String id,
+			@RequestParam(required = false) String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
 
@@ -677,7 +681,7 @@ public class RequirementsController {
 
 		// Fetch paginated requirements
 		Page<RequirementsDto> requirements =
-				service.getRequirementsByAssignedBy(teamLeadId, page, size);
+				service.getRequirementsByAssignedBy(teamLeadId,search, page, size);
 
 		// Clean recruiterName
 		requirements.getContent().forEach(dto -> {

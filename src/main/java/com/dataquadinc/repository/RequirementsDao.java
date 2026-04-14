@@ -499,16 +499,74 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     Integer getNumberOfInterviewsByJobId(@Param("jobId") String jobId);
 
 
-    @Query("SELECT r FROM RequirementsModel r WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate")
-    Page<RequirementsModel> findByRequirementAddedTimeStampBetween(
+    @Query("SELECT r FROM RequirementsModel r " +
+            "WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate " +
+            "AND (" +
+            "   :search IS NULL OR " +
+            "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))" +
+            ")")
+    Page<RequirementsModel> findByDateRangeWithSearch(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Pageable pageable
     );
 
 
-    @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
-    Page<RequirementsModel> findByRequirementAdded(Pageable pageable);
+    @Query(value = """
+    SELECT DISTINCT r.*
+    FROM requirements_model r
+    LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
+    LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
+    WHERE r.status IN ('Submitted','In Progress')
+    
+    AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    """,
+            countQuery = """
+    SELECT COUNT(DISTINCT r.job_id)
+    FROM requirements_model r
+    LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
+    LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
+    WHERE r.status IN ('Submitted','In Progress')
+    
+    AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    """,
+            nativeQuery = true)
+    Page<RequirementsModel> searchRequirements(@Param("search") String search, Pageable pageable);
 
 
     @Query(value = """
@@ -619,16 +677,26 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             @Param("endDate") LocalDateTime endDate
     );
     @Query("SELECT r FROM RequirementsModel r " +
-            "WHERE r.assignedBy = :assignedBy " +
+            "WHERE (:assignedBy IS NULL OR r.assignedBy = :assignedBy) " +
+            "AND r.status IN ('Submitted','In Progress') " +
             "AND (" +
-            "   (r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate AND r.status IN ('Submitted', 'In Progress')) " +
-            "   OR " +
-            "   (r.requirementAddedTimeStamp NOT BETWEEN :startDate AND :endDate AND r.status IN ('In Progress', 'Submitted'))" +
+            "   r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate" +
+            ") " +
+            "AND (" +
+            "   :search IS NULL OR " +
+            "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))" +
             ")")
-    Page<RequirementsModel> findJobsAssignedByName(
+    Page<RequirementsModel> findJobsAssignedByNameWithSearch(
             @Param("assignedBy") String assignedBy,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
             Pageable pageable
     );
 
