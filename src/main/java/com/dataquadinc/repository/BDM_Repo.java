@@ -13,6 +13,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
@@ -108,7 +110,8 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         r.assigned_by AS assigned_by
     FROM requirements_model r
     JOIN bdm_client b 
-        ON TRIM(UPPER(SUBSTRING_INDEX(r.client_name, '__', 1))) COLLATE utf8mb4_bin = TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin
+        ON TRIM(UPPER(SUBSTRING_INDEX(r.client_name, '__', 1))) COLLATE utf8mb4_bin =
+           TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin
     JOIN user_details u 
         ON b.on_boarded_by = u.user_name
     LEFT JOIN job_recruiters jr 
@@ -117,11 +120,25 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         ON jr.recruiter_id = u2.user_id
     WHERE u.user_id = :userId
       AND r.assigned_by = u.user_name
-      AND r.status  IN ('Submitted','In Progress')
+      AND r.status IN ('Submitted','In Progress')
     GROUP BY r.job_id
-""", nativeQuery = true)
-    List<Tuple> findRequirementsByBdmUserId(
-            @Param("userId") String userId
+""",
+            countQuery = """
+    SELECT COUNT(DISTINCT r.job_id)
+    FROM requirements_model r
+    JOIN bdm_client b 
+        ON TRIM(UPPER(SUBSTRING_INDEX(r.client_name, '__', 1))) COLLATE utf8mb4_bin =
+           TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin
+    JOIN user_details u 
+        ON b.on_boarded_by = u.user_name
+    WHERE u.user_id = :userId
+      AND r.assigned_by = u.user_name
+      AND r.status IN ('Submitted','In Progress')
+""",
+            nativeQuery = true)
+    Page<Tuple> findRequirementsByBdmUserId(
+            @Param("userId") String userId,
+            Pageable pageable
     );
 
     @Query("SELECT b FROM BDM_Client b")
@@ -140,6 +157,19 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Query(value = """
+    SELECT 
+        b.id,
+        b.client_name,
+        b.on_boarded_by,
+        b.client_website_url,
+        b.client_linked_in_url,
+        b.client_address,
+        b.location
+    FROM bdm_client b
+""", nativeQuery = true)
+    List<Object[]> findOverallClients();
 
     @Query(value = """
     SELECT COUNT(*) 

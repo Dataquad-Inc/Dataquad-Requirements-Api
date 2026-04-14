@@ -34,6 +34,14 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+
+
+import java.util.Set;
+import java.util.Collections;
+import java.util.stream.Collectors;
+
 @CrossOrigin(origins = {"http://35.188.150.92", "http://192.168.0.140:3000", "http://192.168.0.139:3000","https://mymulya.com","http://localhost:3000",
         "http://192.168.0.135:80/","http://192.168.0.135/","http://182.18.177.16:443","http://mymulya.com:443","http://localhost/",
         "http://154.210.288.26/",
@@ -88,6 +96,15 @@ public class BDM_Controller {
         return ResponseEntity.ok(ResponseBean.successResponse("Clients fetched successfully", clients));
     }
 
+    @GetMapping("/bdm/overall-clients")
+    public ResponseEntity<ResponseBean> getOverallClients() {
+
+        List<Map<String, Object>> clients = service.getOverallClients();
+
+        return ResponseEntity.ok(
+                ResponseBean.successResponse("Overall clients fetched successfully", clients)
+        );
+    }
 
     @GetMapping("/bdm/getClients/{userId}")
     public ResponseEntity<ResponseBean> getClientsByUser(@PathVariable String userId) {
@@ -237,33 +254,41 @@ public class BDM_Controller {
     }
 
     @GetMapping("/bdmrequirements/{userId}")
-    public ResponseEntity<?> getRequirementsByBdm(@PathVariable("userId") String userId) {
+    public ResponseEntity<?> getRequirementsByBdm(
+            @PathVariable("userId") String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
         try {
             logger.debug("Received request to get requirements for userId: {}", userId);
 
-            // Fetch requirements based on the BDM's userId
-            List<RequirementsDto> requirements = (List<RequirementsDto>) service.getRequirementsForBdmByUserId(userId);
+            Page<RequirementsDto> requirements =
+                    service.getRequirementsForBdmByUserId(userId, page, size);
 
-            // Clean up recruiterName field
-            for (RequirementsDto dto : requirements) {
+            requirements.getContent().forEach(dto -> {
                 Set<String> recruiterNames = dto.getRecruiterName();
 
                 if (recruiterNames != null) {
                     Set<String> cleanedNames = recruiterNames.stream()
-                            .map(name -> name.replaceAll("[\\[\\]\"]", "")) // Remove brackets and extra quotes
+                            .map(name -> name.replaceAll("[\\[\\]\"]", ""))
                             .collect(Collectors.toSet());
                     dto.setRecruiterName(cleanedNames);
                 } else {
-                    dto.setRecruiterName(Collections.emptySet()); // or handle however appropriate
+                    dto.setRecruiterName(Collections.emptySet());
                 }
-            }
+            });
 
-            logger.debug("Found {} requirements for userId: {}", requirements.size(), userId);
+            logger.debug("Found {} requirements for userId: {}",
+                    requirements.getTotalElements(), userId);
+
             return new ResponseEntity<>(requirements, HttpStatus.OK);
+
         } catch (Exception ex) {
-            logger.error("An unexpected error occurred while fetching requirements for userId: {}", userId, ex.getMessage());
-            // Handle unexpected exceptions
-            return new ResponseEntity<>(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred", LocalDateTime.now()), HttpStatus.INTERNAL_SERVER_ERROR);
+            logger.error("Error fetching requirements for userId: {}", userId, ex);
+            return new ResponseEntity<>(
+                    new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "An unexpected error occurred", LocalDateTime.now()),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

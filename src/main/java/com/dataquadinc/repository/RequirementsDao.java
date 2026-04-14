@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.dataquadinc.model.RequirementsModel;
 import org.springframework.data.domain.Page;
@@ -499,16 +501,16 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     Integer getNumberOfInterviewsByJobId(@Param("jobId") String jobId);
 
 
-    // RequirementsDao.java
-    @Query("SELECT r FROM RequirementsModel r WHERE DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate")
-    List<RequirementsModel> findByRequirementAddedTimeStampBetween(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+    @Query("SELECT r FROM RequirementsModel r WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate")
+    Page<RequirementsModel> findByRequirementAddedTimeStampBetween(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
     );
 
 
     @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
-    List<RequirementsModel> findByRequirementAdded();
+    Page<RequirementsModel> findByRequirementAdded(Pageable pageable);
 
 
     @Query(value = """
@@ -625,10 +627,11 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             "   OR " +
             "   (r.requirementAddedTimeStamp NOT BETWEEN :startDate AND :endDate AND r.status IN ('In Progress', 'Submitted'))" +
             ")")
-    List<RequirementsModel> findJobsAssignedByName(
+    Page<RequirementsModel> findJobsAssignedByName(
             @Param("assignedBy") String assignedBy,
             @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
     );
 
 
@@ -688,26 +691,20 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
                 ), 0) AS numberOfClients,
 
             
-            COALESCE((
-                SELECT COUNT(DISTINCT r2.job_id)
-                FROM requirements_model r2
-                WHERE (
-                    REPLACE(REPLACE(r2.assigned_by, '\\"', ''), '"', '') = REPLACE(REPLACE(u.user_name, '\\"', ''), '"', '')
-                    OR EXISTS (
-                        SELECT 1\s
-                        FROM production.job_recruiters jr
-                        WHERE jr.job_id = r2.job_id
-                          AND jr.recruiter_id = u.user_id
-                    )
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM candidate_submissions cs
-                    WHERE cs.job_id = r2.job_id
-                      AND cs.user_id = u.user_id
-                      AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate
-                )
-            ), 0) AS numberOfRequirements,
+          COALESCE((
+    SELECT COUNT(DISTINCT r2.job_id)
+    FROM requirements_model r2
+    WHERE (
+        TRIM(BOTH '"' FROM r2.assigned_by) = u.user_name
+        OR EXISTS (
+            SELECT 1
+            FROM job_recruiters jr
+            WHERE jr.job_id = r2.job_id
+            AND jr.recruiter_id = u.user_id
+        )
+    )
+    AND DATE(r2.requirement_added_time_stamp) BETWEEN :startDate AND :endDate
+), 0) AS numberOfRequirements,
 
             COALESCE((
                 SELECT COUNT(*)
