@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.sql.Timestamp;
 
 @Repository
 public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
@@ -137,6 +138,10 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
         LOWER(u2.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
       )
+          AND (
+        (:startDate IS NULL OR r.requirement_added_time_stamp >= :startDate)
+        AND (:endDate IS NULL OR r.requirement_added_time_stamp < DATE_ADD(:endDate, INTERVAL 1 DAY))
+      )
 
     GROUP BY r.job_id
 """,
@@ -171,11 +176,17 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
         LOWER(u2.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
       )
+      AND (
+        (:startDate IS NULL OR r.requirement_added_time_stamp >= :startDate)
+        AND (:endDate IS NULL OR r.requirement_added_time_stamp < DATE_ADD(:endDate, INTERVAL 1 DAY))
+      )
 """,
             nativeQuery = true)
     Page<Tuple> findRequirementsByBdmUserId(
             @Param("userId") String userId,
             @Param("search") String search,
+            @Param("startDate") Timestamp startDate,
+            @Param("endDate") Timestamp endDate,
             Pageable pageable
     );
 

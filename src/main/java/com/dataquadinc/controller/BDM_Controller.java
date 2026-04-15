@@ -258,13 +258,17 @@ public class BDM_Controller {
             @PathVariable("userId") String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search){
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate){
 
         try {
             logger.debug("Received request to get requirements for userId: {}", userId);
 
             Page<RequirementsDto> requirements =
-                    service.getRequirementsForBdmByUserId(userId,search,page, size);
+                    service.getRequirementsForBdmByUserId(userId,search,startDate,endDate,page, size);
 
             requirements.getContent().forEach(dto -> {
                 Set<String> recruiterNames = dto.getRecruiterName();

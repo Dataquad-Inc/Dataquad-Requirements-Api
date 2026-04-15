@@ -862,7 +862,7 @@ public class BDM_service {
     }
 
     public Page<RequirementsDto> getRequirementsForBdmByUserId(
-            String userId,String search, int page, int size) {
+            String userId,String search,LocalDate startDate, LocalDate endDate, int page, int size) {
 
         int userExists = requirementsDao.countByUserId(userId);
         if (userExists == 0) {
@@ -873,8 +873,17 @@ public class BDM_service {
 
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by("requirement_added_time_stamp").descending());
+        Timestamp startTimestamp = null;
+        Timestamp endTimestamp = null;
 
-        Page<Tuple> results = repo.findRequirementsByBdmUserId(userId, search,pageable);
+        if (startDate != null) {
+            startTimestamp = Timestamp.valueOf(startDate.atStartOfDay());
+        }
+        if (endDate != null) {
+            endTimestamp = Timestamp.valueOf(endDate.atTime(23, 59, 59));
+        }
+
+        Page<Tuple> results = repo.findRequirementsByBdmUserId(userId, search,startTimestamp, endTimestamp,pageable);
 
         List<RequirementsDto> dtos = results.getContent().stream().map(tuple -> {
 
