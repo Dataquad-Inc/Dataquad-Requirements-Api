@@ -34,7 +34,9 @@ import com.dataquadinc.repository.RequirementsDao;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class RequirementsService {
@@ -1543,38 +1545,43 @@ public class RequirementsService {
 		);
 	}
 
-	public List<InProgressRequirementDTO> getInProgressRequirements(LocalDate startDate, LocalDate endDate) {
-		log.info("🔍 Fetching 'In Progress' requirements between {} and {}", startDate, endDate);
+    public Map<String, Object> getInProgressRequirements(
+            LocalDate startDate,
+            LocalDate endDate,
+            int page,
+            int size,
+            String search) {
 
-		boolean isToday = startDate.equals(endDate) && startDate.equals(LocalDate.now());
+        boolean isToday = startDate.equals(endDate) && startDate.equals(LocalDate.now());
 
-		List<Object[]> results = requirementsDao.findInProgressRequirementsByDateRange(startDate, endDate, isToday);
-		log.debug("✅ Raw DB results fetched: {}", results.size());
+        Pageable pageable = PageRequest.of(page, size);
 
-		List<InProgressRequirementDTO> dtos = new ArrayList<>();
+        Page<Object[]> pageResult =
+                requirementsDao.findInProgressRequirementsByDateRange(
+                        startDate, endDate, isToday, search, pageable);
 
-		for (Object[] row : results) {
-			try {
-				InProgressRequirementDTO dto = mapRowToDTO(row);
-				if (dto != null) {
-					dtos.add(dto);
-				}
-			} catch (Exception ex) {
-				log.error("❌ Error mapping row to DTO: {}", Arrays.toString(row), ex);
-			}
-		}
+        List<InProgressRequirementDTO> dtos = new ArrayList<>();
 
-		log.info("✅ Successfully mapped {} simplified In Progress requirements.", dtos.size());
+        for (Object[] row : pageResult.getContent()) {
+            dtos.add(mapRowToDTO(row));
+        }
 
-		dtos.sort(
-				Comparator.comparing(
-						InProgressRequirementDTO::getUpdatedDateTime,
-						Comparator.nullsLast(Comparator.reverseOrder())
-				)
-		);
+        dtos.sort(
+                Comparator.comparing(
+                        InProgressRequirementDTO::getUpdatedDateTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+        );
 
-		return dtos;
-	}
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", dtos);
+        response.put("currentPage", pageResult.getNumber());
+        response.put("pageSize", pageResult.getSize());
+        response.put("totalElements", pageResult.getTotalElements());
+        response.put("totalPages", pageResult.getTotalPages());
+
+        return response;
+    }
 
 	private InProgressRequirementDTO mapRowToDTO(Object[] row) {
 		String recruiterId = (String) row[0];
@@ -1655,65 +1662,66 @@ public class RequirementsService {
 	}
 
 
-	public String sendInProgressEmail(String userId, List<InProgressRequirementDTO> requirements) {
-		String recruiterName;
+    public String sendInProgressEmail(String userId, List<InProgressRequirementDTO> requirements) {
+        String recruiterName;
+        LocalDate today = LocalDate.now();
 
-		// ✅ If userId is null or "null", treat it as request for all recruiters
-		if (userId == null || "null".equalsIgnoreCase(userId)) {
-			recruiterName = "All Recruiters";
+        if (userId == null || "null".equalsIgnoreCase(userId)) {
+            recruiterName = "All Recruiters";
 
-			// 🔁 If no requirements provided, fetch from DB
-			if (requirements == null) {
-				LocalDate today = LocalDate.now();
-				requirements = getInProgressRequirements(today, today);
-			}
+            if (requirements == null) {
+                Map<String, Object> response =
+                        getInProgressRequirements(today, today, 0, Integer.MAX_VALUE,null);
 
-		} else {
-			recruiterName = requirementsDao.findUserNameByUserId(userId);
-			if (recruiterName == null || recruiterName.isEmpty()) {
-				throw new UserNotFoundException("No User Found with User Id: " + userId);
-			}
+                requirements = (List<InProgressRequirementDTO>) response.get("content");
+            }
 
-			if (requirements == null) {
-				throw new IllegalArgumentException("❌ Recruiter-specific email requires data in request body.");
-			}
+        } else {
+            recruiterName = requirementsDao.findUserNameByUserId(userId);
+            if (recruiterName == null || recruiterName.isEmpty()) {
+                throw new UserNotFoundException("No User Found with User Id: " + userId);
+            }
 
-			// 🔍 Filter only this recruiter's data
-			requirements = requirements.stream()
-					.filter(r -> userId.equals(r.getRecruiterId()))
-					.collect(Collectors.toList());
-		}
+            if (requirements == null) {
+                throw new IllegalArgumentException("Recruiter-specific email requires data in request body.");
+            }
 
-		if (requirements == null || requirements.isEmpty()) {
-			return "⚠️ No InProgress data found for: " + recruiterName;
-		}
+            requirements = requirements.stream()
+                    .filter(r -> userId.equals(r.getRecruiterId()))
+                    .collect(Collectors.toList());
+        }
 
-		logger.info("📨 Preparing to send InProgress email for: {}", recruiterName);
+        if (requirements == null || requirements.isEmpty()) {
+            return "No InProgress data found for: " + recruiterName;
+        }
 
-		requirements.sort(Comparator
-				.comparing((InProgressRequirementDTO dto) ->
-						Optional.ofNullable(dto.getTeamlead()).orElse("zzzzzz"), String.CASE_INSENSITIVE_ORDER)
-				.thenComparing(InProgressRequirementDTO::getUpdatedDateTime,
-						Comparator.nullsLast(Comparator.reverseOrder()))
-		);
+        logger.info("Preparing to send InProgress email for: {}", recruiterName);
 
-		String subject = "InProgress Stats - " + recruiterName + " " + LocalDate.now();
+        requirements.sort(Comparator
+                .comparing((InProgressRequirementDTO dto) ->
+                        Optional.ofNullable(dto.getTeamlead()).orElse("zzzzzz"), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(InProgressRequirementDTO::getUpdatedDateTime,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+        );
 
-		String html = (userId == null || "null".equalsIgnoreCase(userId))
-				? buildTeamleadWiseEmail(requirements)
-				: buildRecruiterWiseEmail(requirements, recruiterName);
+        String subject = "InProgress Stats - " + recruiterName + " " + today;
 
-		List<String> recipients = requirementsDao.findEmailsByDesignationIgnoreCase("director");
+        String html = (userId == null || "null".equalsIgnoreCase(userId))
+                ? buildTeamleadWiseEmail(requirements)
+                : buildRecruiterWiseEmail(requirements, recruiterName);
 
-		if (recipients.isEmpty()) {
-			throw new RuntimeException("No recipients found with designation = 'director'");
-		}
+        List<String> recipients = requirementsDao.findEmailsByDesignationIgnoreCase("director");
 
-		for (String email : recipients) {
-			emailService.sendEmail(email, subject, html);
-		}
-		return "✅ Email Sent Successfully for: " + recruiterName;
-	}
+        if (recipients.isEmpty()) {
+            throw new RuntimeException("No recipients found with designation = 'director'");
+        }
+
+        for (String email : recipients) {
+            emailService.sendEmail(email, subject, html);
+        }
+
+        return "Email Sent Successfully for: " + recruiterName;
+    }
 
 	private String buildTeamleadWiseEmail(List<InProgressRequirementDTO> requirements) {
 		StringBuilder sb = new StringBuilder();
