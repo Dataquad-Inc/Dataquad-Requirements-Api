@@ -13,7 +13,7 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,10 +29,8 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
+
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 @Service
 public class BDM_service {
@@ -864,7 +862,7 @@ public class BDM_service {
     }
 
     public Page<RequirementsDto> getRequirementsForBdmByUserId(
-            String userId, int page, int size) {
+            String userId,String search,LocalDate startDate, LocalDate endDate, int page, int size) {
 
         int userExists = requirementsDao.countByUserId(userId);
         if (userExists == 0) {
@@ -873,9 +871,19 @@ public class BDM_service {
                     "User ID '" + userId + "' not found in the database.");
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by("requirement_added_time_stamp").descending());
+        Timestamp startTimestamp = null;
+        Timestamp endTimestamp = null;
 
-        Page<Tuple> results = repo.findRequirementsByBdmUserId(userId, pageable);
+        if (startDate != null) {
+            startTimestamp = Timestamp.valueOf(startDate.atStartOfDay());
+        }
+        if (endDate != null) {
+            endTimestamp = Timestamp.valueOf(endDate.atTime(23, 59, 59));
+        }
+
+        Page<Tuple> results = repo.findRequirementsByBdmUserId(userId, search,startTimestamp, endTimestamp,pageable);
 
         List<RequirementsDto> dtos = results.getContent().stream().map(tuple -> {
 
@@ -925,7 +933,7 @@ public class BDM_service {
 
         }).collect(Collectors.toList());
 
-        logger.info("✅ Fetched {} requirements for BDM userId '{}'",
+        logger.info("Fetched {} requirements for BDM userId '{}'",
                 results.getTotalElements(), userId);
 
         return new PageImpl<>(dtos, pageable, results.getTotalElements());

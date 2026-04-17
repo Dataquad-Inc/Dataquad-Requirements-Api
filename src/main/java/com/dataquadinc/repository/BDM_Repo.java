@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.sql.Timestamp;
 
 @Repository
 public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
@@ -121,6 +122,27 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     WHERE u.user_id = :userId
       AND r.assigned_by = u.user_name
       AND r.status IN ('Submitted','In Progress')
+
+      AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u2.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+          AND (
+        (:startDate IS NULL OR r.requirement_added_time_stamp >= :startDate)
+        AND (:endDate IS NULL OR r.requirement_added_time_stamp < DATE_ADD(:endDate, INTERVAL 1 DAY))
+      )
+
     GROUP BY r.job_id
 """,
             countQuery = """
@@ -131,13 +153,40 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
            TRIM(UPPER(b.client_name)) COLLATE utf8mb4_bin
     JOIN user_details u 
         ON b.on_boarded_by = u.user_name
+    LEFT JOIN job_recruiters jr 
+        ON jr.job_id = r.job_id
+    LEFT JOIN user_details u2 
+        ON jr.recruiter_id = u2.user_id
     WHERE u.user_id = :userId
       AND r.assigned_by = u.user_name
       AND r.status IN ('Submitted','In Progress')
+
+      AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u2.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+      AND (
+        (:startDate IS NULL OR r.requirement_added_time_stamp >= :startDate)
+        AND (:endDate IS NULL OR r.requirement_added_time_stamp < DATE_ADD(:endDate, INTERVAL 1 DAY))
+      )
 """,
             nativeQuery = true)
     Page<Tuple> findRequirementsByBdmUserId(
             @Param("userId") String userId,
+            @Param("search") String search,
+            @Param("startDate") Timestamp startDate,
+            @Param("endDate") Timestamp endDate,
             Pageable pageable
     );
 

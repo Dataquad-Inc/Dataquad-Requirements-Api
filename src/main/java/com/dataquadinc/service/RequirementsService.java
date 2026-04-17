@@ -441,12 +441,12 @@ public class RequirementsService {
 	}
 
 
-	public Page<RequirementsDto> getRequirementsDetails(int page, int size) {
+	public Page<RequirementsDto> getRequirementsDetails(int page, int size,String search) {
 
-		Pageable pageable = PageRequest.of(page, size, Sort.by("requirementAddedTimeStamp").descending());
+		Pageable pageable = PageRequest.of(page, size, Sort.by("requirement_added_time_stamp").descending());
 
 		Page<RequirementsModel> requirementsPage =
-				requirementsDao.findByRequirementAdded(pageable);
+				requirementsDao.searchRequirements(search,pageable);
 
 		logger.info("Fetched no of Requirements {}", requirementsPage.getTotalElements());
 
@@ -494,6 +494,7 @@ public class RequirementsService {
 	public Page<RequirementsDto> getRequirementsByDateRange(
 			LocalDate startDate,
 			LocalDate endDate,
+			String search,
 			int page,
 			int size) {
 
@@ -515,9 +516,10 @@ public class RequirementsService {
 
 		// Fetch paginated data
 		Page<RequirementsModel> requirementsPage =
-				requirementsDao.findByRequirementAddedTimeStampBetween(
+				requirementsDao.findByDateRangeWithSearch(
 						startDateTime,
 						endDateTime,
+						search,
 						pageable
 				);
 
@@ -1295,9 +1297,9 @@ public class RequirementsService {
 	}
 
 	public Page<RequirementsDto> getRequirementsByAssignedBy(
-			String userId, int page, int size) {
+			String userId,String search, int page, int size) {
 
-		// 1. Validate user
+		//Validate user
 		int userExists = requirementsDao.countByUserId(userId);
 		if (userExists == 0) {
 			logger.warn("User ID '{}' not found", userId);
@@ -1305,27 +1307,27 @@ public class RequirementsService {
 					"User ID '" + userId + "' not found in the database.");
 		}
 
-		// 2. Get assignedBy name
+		//Get assignedBy name
 		String assignedBy = requirementsDao.findUserNameByUserId(userId);
 
-		// 3. Date range
+		//Date range
 		LocalDate today = LocalDate.now();
 		LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
 		LocalDateTime endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(LocalTime.MAX);
 
-		// 4. Pageable
+		//Pageable
 		Pageable pageable = PageRequest.of(page, size,
 				Sort.by("requirementAddedTimeStamp").descending());
 
-		// 5. Fetch paginated data
+		//Fetch paginated data
 		Page<RequirementsModel> requirementsPage =
-				requirementsDao.findJobsAssignedByName(
-						assignedBy, startOfMonth, endOfMonth, pageable);
+				requirementsDao.findJobsAssignedByNameWithSearch(
+						assignedBy, startOfMonth, endOfMonth,search, pageable);
 
 		logger.info("Fetched {} requirements for user ID '{}' (assigned_by='{}')",
 				requirementsPage.getTotalElements(), userId, assignedBy);
 
-		// 6. Map to DTO (unchanged logic)
+		//Map to DTO
 		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
 				.map(requirement -> {
 
