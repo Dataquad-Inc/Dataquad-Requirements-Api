@@ -78,7 +78,7 @@ public class RequirementsDto
 
 	private String salaryPackage;
 
-	private int noOfPositions;
+	private Integer noOfPositions;
 
 	private LocalDateTime requirementAddedTimeStamp;
 
@@ -305,11 +305,11 @@ public class RequirementsDto
 		this.salaryPackage = salaryPackage;
 	}
 
-	public int getNoOfPositions() {
+	public Integer getNoOfPositions() {
 		return noOfPositions;
 	}
 
-	public void setNoOfPositions(int noOfPositions) {
+	public void setNoOfPositions(Integer noOfPositions) {
 		this.noOfPositions = noOfPositions;
 	}
 
