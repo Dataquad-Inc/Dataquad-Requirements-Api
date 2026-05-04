@@ -42,6 +42,8 @@ import org.springframework.data.domain.Pageable;
 public class RequirementsService {
 	private static final Logger logger = LoggerFactory.getLogger(RequirementsService.class);
 
+	@Autowired
+	private AsyncService asyncService;
 
 	@Autowired
 	private RequirementsDao requirementsDao;
@@ -690,113 +692,86 @@ public class RequirementsService {
 
 
 	@Transactional
-	public ResponseBean updateRequirementDetails(RequirementsDto requirementsDto) {
-		try {
-			// Fetch the existing requirement by jobId
-			RequirementsModel existingRequirement = requirementsDao.findById(requirementsDto.getJobId())
-					.orElseThrow(() -> new RequirementNotFoundException("Requirement Not Found with Id : " + requirementsDto.getJobId()));
+	public ResponseBean updateRequirementDetails(RequirementsDto dto) {
 
-			// Log before update
-			logger.info("Before update: " + existingRequirement);
+		RequirementsModel entity = requirementsDao.findById(dto.getJobId())
+				.orElseThrow(() ->
+						new RequirementNotFoundException(
+								"Requirement Not Found with Id : " + dto.getJobId()
+						));
 
-			// Update the existing requirement with the new details from the DTO
-			if (requirementsDto.getJobTitle() != null) existingRequirement.setJobTitle(requirementsDto.getJobTitle());
-			if (requirementsDto.getClientName() != null)
-				existingRequirement.setClientName(requirementsDto.getClientName());
+		String oldStatus = entity.getStatus();
 
-			// Handle job description: either text or file
-			if (requirementsDto.getJobDescription() != null && !requirementsDto.getJobDescription().isEmpty()) {
-				existingRequirement.setJobDescription(requirementsDto.getJobDescription());  // Set text-based description
-				existingRequirement.setJobDescriptionBlob(null);  // Nullify the BLOB if text is provided
-			}
+		if (dto.getJobTitle() != null)
+			entity.setJobTitle(dto.getJobTitle());
 
-			// If a file for job description is provided, set it as BLOB and nullify the text description
-			if (requirementsDto.getJobDescriptionFile() != null && !requirementsDto.getJobDescriptionFile().isEmpty()) {
-				byte[] jobDescriptionBytes = saveJobDescriptionFileAsBlob(requirementsDto.getJobDescriptionFile(), requirementsDto.getJobId());
-				existingRequirement.setJobDescriptionBlob(jobDescriptionBytes);  // Set the BLOB field
-				existingRequirement.setJobDescription(null);  // Nullify the text-based description
-			}
+		if (dto.getClientName() != null)
+			entity.setClientName(dto.getClientName());
 
-			// If the jobDescriptionFile is null, but jobDescriptionBlob is updated, update the BLOB
-			if (requirementsDto.getJobDescriptionFile() == null && requirementsDto.getJobDescriptionBlob() != null) {
-				existingRequirement.setJobDescriptionBlob(requirementsDto.getJobDescriptionBlob());  // Set the BLOB field
-				existingRequirement.setJobDescription(null);  // Nullify the text-based description
-			}
+		if (dto.getJobType() != null)
+			entity.setJobType(dto.getJobType());
 
-			// Set other fields
-			existingRequirement.setJobType(requirementsDto.getJobType());
-			existingRequirement.setLocation(requirementsDto.getLocation());
-			existingRequirement.setJobMode(requirementsDto.getJobMode());
-			existingRequirement.setExperienceRequired(requirementsDto.getExperienceRequired());
-			existingRequirement.setNoticePeriod(requirementsDto.getNoticePeriod());
-			existingRequirement.setRelevantExperience(requirementsDto.getRelevantExperience());
-			existingRequirement.setQualification(requirementsDto.getQualification());
-			existingRequirement.setSalaryPackage(requirementsDto.getSalaryPackage());
-			existingRequirement.setNoOfPositions(requirementsDto.getNoOfPositions());
-			existingRequirement.setRecruiterIds(requirementsDto.getRecruiterIds());
-			if (StringUtils.hasText(requirementsDto.getAssignedTo())) {
-				existingRequirement.setAssignedBy(requirementsDto.getAssignedTo());
-			} else {
-				existingRequirement.setAssignedBy(requirementsDto.getAssignedBy());
-			}
-			existingRequirement.setUpdatedAt(LocalDateTime.now());
-			if (requirementsDto.getStatus() != null) existingRequirement.setStatus(requirementsDto.getStatus());
+		if (dto.getLocation() != null)
+			entity.setLocation(dto.getLocation());
 
-			if (requirementsDto.getStatus() != null) {
-				existingRequirement.setStatus(requirementsDto.getStatus());
+		if (dto.getJobMode() != null)
+			entity.setJobMode(dto.getJobMode());
 
-				// ✅ If requirement is marked as CLOSED → trigger bench import
-				if ("closed".equalsIgnoreCase(requirementsDto.getStatus())) {
-					try {
-						String jobId = requirementsDto.getJobId();
+		if (dto.getExperienceRequired() != null)
+			entity.setExperienceRequired(dto.getExperienceRequired());
 
-						// 1. Fetch candidates for jobId
-						String fetchUrl = "https://mymulya.com/candidate/closedjobs/" + jobId;
+		if (dto.getNoticePeriod() != null)
+			entity.setNoticePeriod(dto.getNoticePeriod());
 
-						ResponseEntity<List<Map<String, Object>>> fetchResponse = restTemplate.exchange(
-								fetchUrl,
-								HttpMethod.GET,
-								null,
-								new ParameterizedTypeReference<List<Map<String, Object>>>() {}
-						);
+		if (dto.getRelevantExperience() != null)
+			entity.setRelevantExperience(dto.getRelevantExperience());
 
-						List<Map<String, Object>> candidateList = fetchResponse.getBody();
+		if (dto.getQualification() != null)
+			entity.setQualification(dto.getQualification());
 
-						if (candidateList != null && !candidateList.isEmpty()) {
-							// 2. Post candidates to /bench/import
-							String benchUrl = "https://mymulya.com/candidate/bench/import";
+		if (dto.getSalaryPackage() != null)
+			entity.setSalaryPackage(dto.getSalaryPackage());
 
-							HttpHeaders headers = new HttpHeaders();
-							headers.setContentType(MediaType.APPLICATION_JSON);
-
-							HttpEntity<List<Map<String, Object>>> benchRequest = new HttpEntity<>(candidateList, headers);
-
-							ResponseEntity<String> benchResponse = restTemplate.postForEntity(benchUrl, benchRequest, String.class);
-
-							logger.info("Bench import response for jobId {}: {}", jobId, benchResponse.getBody());
-						} else {
-							logger.warn("No candidates found for closed jobId: {}", jobId);
-						}
-					} catch (Exception ex) {
-						logger.error("Failed to push candidates to bench for jobId: {}", requirementsDto.getJobId(), ex);
-					}
-				}
-			}
-			// Save the updated requirement to the database
-			requirementsDao.save(existingRequirement);
-
-			// Log after update
-			logger.info("After update: " + existingRequirement);
-
-			// Send emails to recruiters (after the requirement has been successfully updated)
-			sendEmailsToRecruiters(existingRequirement); // Assuming this method handles the sending of emails to recruiters
-
-			// Return success response
-			return new ResponseBean(true, "Updated Successfully", null, null);
-		} catch (Exception e) {
-			logger.error("Error updating requirement", e.getMessage());
-			return new ResponseBean(false, "Error updating requirement" + e.getMessage(), "Internal Server Error", null);
+		if (dto.getNoOfPositions() != null && dto.getNoOfPositions() > 0) {
+			entity.setNoOfPositions(dto.getNoOfPositions());
 		}
+
+		if (dto.getRecruiterIds() != null)
+			entity.setRecruiterIds(dto.getRecruiterIds());
+
+		if (dto.getAssignedBy() != null)
+			entity.setAssignedBy(dto.getAssignedBy());
+
+		if (dto.getStatus() != null)
+			entity.setStatus(dto.getStatus());
+
+		try {
+			if (dto.getJobDescriptionFile() != null && !dto.getJobDescriptionFile().isEmpty()) {
+				entity.setJobDescriptionBlob(dto.getJobDescriptionFile().getBytes());
+				entity.setJobDescription(null);
+			} else if (dto.getJobDescription() != null) {
+				entity.setJobDescription(dto.getJobDescription());
+				entity.setJobDescriptionBlob(null);
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("Error processing file", e);
+		}
+
+		entity.setUpdatedAt(LocalDateTime.now());
+
+		RequirementsModel savedEntity = requirementsDao.save(entity);
+
+		// ASYNC ONLY WHEN STATUS CHANGED TO CLOSED
+		//logger.info("Old Status: {}, New Status: {}", oldStatus, dto.getStatus());
+		if (dto.getStatus() != null
+				&& oldStatus != null
+				&& !dto.getStatus().equalsIgnoreCase(oldStatus)
+				&& "closed".equalsIgnoreCase(dto.getStatus())) {
+
+			asyncService.handlePostUpdateTasks(savedEntity, dto.getStatus());
+		}
+
+		return new ResponseBean(true, "Updated Successfully", null, null);
 	}
 
 
