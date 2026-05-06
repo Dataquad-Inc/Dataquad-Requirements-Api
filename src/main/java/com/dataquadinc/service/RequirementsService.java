@@ -1553,14 +1553,21 @@ public class RequirementsService {
 		String jobType = (String) row[13];
 		String experienceRequired = (String) row[14];
 		String relevantExperience = (String) row[15];
+		Object rawLastLoginTime = row[16];
 
 
 		LocalDate postedDate = parseToLocalDate(rawPostedDate);
 		LocalDateTime updatedDateTime = parseToLocalDateTime(rawUpdatedDateTime);
+		LocalDateTime lastLoginTime = parseToLocalDateTime(rawLastLoginTime);
 
 		// Optional: Convert to IST (only if needed — if DB stores UTC timestamps)
 		if (updatedDateTime != null) {
 			updatedDateTime = updatedDateTime.atZone(ZoneId.of("UTC"))
+					.withZoneSameInstant(ZoneId.of("Asia/Kolkata"))
+					.toLocalDateTime();
+		}
+		if (lastLoginTime != null) {
+			lastLoginTime = lastLoginTime.atZone(ZoneId.of("UTC"))
 					.withZoneSameInstant(ZoneId.of("Asia/Kolkata"))
 					.toLocalDateTime();
 		}
@@ -1584,7 +1591,8 @@ public class RequirementsService {
 				jobMode,
 				jobType,
 				experienceRequired,
-				relevantExperience
+				relevantExperience,
+				lastLoginTime
 		);
 	}
 

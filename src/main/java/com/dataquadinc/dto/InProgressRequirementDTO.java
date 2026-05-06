@@ -1,5 +1,6 @@
 package com.dataquadinc.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,8 @@ public class InProgressRequirementDTO {
     private String jobType;
     private String experienceRequired;
     private String relevantExperience;
+    @JsonProperty("last_login_time")
+    private LocalDateTime lastLoginTime;
 
 
     public InProgressRequirementDTO(
@@ -45,7 +48,8 @@ public class InProgressRequirementDTO {
             String jobMode,
             String jobType,
             String experienceRequired,
-            String relevantExperience
+            String relevantExperience,
+            LocalDateTime lastLoginTime
 
     ) {
         this.recruiterId = recruiterId;
@@ -64,6 +68,7 @@ public class InProgressRequirementDTO {
         this.jobType = jobType;
         this.experienceRequired = experienceRequired;
         this.relevantExperience = relevantExperience;
+        this.lastLoginTime = lastLoginTime;
     }
 
 
@@ -193,5 +198,13 @@ public class InProgressRequirementDTO {
 
     public void setJobTitle(String jobTitle) {
         this.jobTitle = jobTitle;
+    }
+
+    public LocalDateTime getLastLoginTime() {
+        return lastLoginTime;
+    }
+
+    public void setLastLoginTime(LocalDateTime lastLoginTime) {
+        this.lastLoginTime = lastLoginTime;
     }
 }
