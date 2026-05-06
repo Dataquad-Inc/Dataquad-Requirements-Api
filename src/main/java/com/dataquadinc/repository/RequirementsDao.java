@@ -1646,13 +1646,8 @@ SELECT * FROM (
         r.job_mode AS jobMode,
         r.job_type AS jobType,
         r.experience_required AS experienceRequired,
-<<<<<<< HEAD
         r.relevant_experience AS relevantExperience,
         DATE_FORMAT(ud.last_login_time, '%Y-%m-%d %H:%i:%s') AS lastLoginTime
-=======
-        r.relevant_experience AS relevantExperience
-
->>>>>>> bc55fe5222f2e7c2063fbfd231155103dc45bb6a
     FROM user_details ud
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
