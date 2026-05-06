@@ -11,8 +11,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.dataquadinc.model.RequirementsModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface RequirementsDao extends JpaRepository<RequirementsModel, String> {
@@ -497,16 +501,74 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     Integer getNumberOfInterviewsByJobId(@Param("jobId") String jobId);
 
 
-    // RequirementsDao.java
-    @Query("SELECT r FROM RequirementsModel r WHERE DATE(r.requirementAddedTimeStamp) BETWEEN :startDate AND :endDate")
-    List<RequirementsModel> findByRequirementAddedTimeStampBetween(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+    @Query("SELECT r FROM RequirementsModel r " +
+            "WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate " +
+            "AND (" +
+            "   :search IS NULL OR " +
+            "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))" +
+            ")")
+    Page<RequirementsModel> findByDateRangeWithSearch(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            Pageable pageable
     );
 
 
-    @Query("SELECT r FROM RequirementsModel r WHERE r.status IN ('Submitted','In Progress')")
-    List<RequirementsModel> findByRequirementAdded();
+    @Query(value = """
+    SELECT DISTINCT r.*
+    FROM requirements_model r
+    LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
+    LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
+    WHERE r.status IN ('Submitted','In Progress')
+    
+    AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    """,
+            countQuery = """
+    SELECT COUNT(DISTINCT r.job_id)
+    FROM requirements_model r
+    LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
+    LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
+    WHERE r.status IN ('Submitted','In Progress')
+    
+    AND (
+        :search IS NULL OR :search = '' OR
+
+        LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_description) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_mode) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.job_type) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.qualification) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%')) OR
+        LOWER(u.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+    )
+    """,
+            nativeQuery = true)
+    Page<RequirementsModel> searchRequirements(@Param("search") String search, Pageable pageable);
 
 
     @Query(value = """
@@ -617,16 +679,27 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             @Param("endDate") LocalDateTime endDate
     );
     @Query("SELECT r FROM RequirementsModel r " +
-            "WHERE r.assignedBy = :assignedBy " +
+            "WHERE (:assignedBy IS NULL OR r.assignedBy = :assignedBy) " +
+            "AND r.status IN ('Submitted','In Progress') " +
             "AND (" +
-            "   (r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate AND r.status IN ('Submitted', 'In Progress')) " +
-            "   OR " +
-            "   (r.requirementAddedTimeStamp NOT BETWEEN :startDate AND :endDate AND r.status IN ('In Progress', 'Submitted'))" +
+            "   r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate" +
+            ") " +
+            "AND (" +
+            "   :search IS NULL OR " +
+            "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))" +
             ")")
-    List<RequirementsModel> findJobsAssignedByName(
+    Page<RequirementsModel> findJobsAssignedByNameWithSearch(
             @Param("assignedBy") String assignedBy,
             @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            Pageable pageable
     );
 
 
@@ -1479,8 +1552,10 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     );
 
     @Query(value = """
-    (
-    -- Part 1: EMPLOYEES with no active assigned jobs
+
+SELECT * FROM (
+
+    -- PART 1: Employees with NO active jobs
     SELECT DISTINCT
         ud.user_id AS recruiterId,
         ud.user_name AS recruiterName,
@@ -1502,16 +1577,12 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     FROM user_details ud
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
+
     WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
-    AND ud.status = 'ACTIVE' AND ud.entity = 'IN'
-      AND ud.user_id NOT IN (
-          SELECT DISTINCT jr.recruiter_id
-          FROM job_recruiters jr
-          JOIN requirements_model r ON r.job_id = jr.job_id
-          WHERE r.status IN ('In Progress', 'Submitted')
-            AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
-      )
-    AND ud.designation != 'testuser'
+      AND ud.status = 'ACTIVE'
+      AND ud.entity = 'IN'
+      AND ud.designation != 'testuser'
+
       AND NOT EXISTS (
           SELECT 1
           FROM job_recruiters jr
@@ -1519,38 +1590,46 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
           WHERE jr.recruiter_id = ud.user_id
             AND r.status IN ('In Progress', 'Submitted')
             AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
-            AND ud.status = 'ACTIVE' AND ud.entity = 'IN'
       )
-)
-UNION ALL
-(
-    -- Part 2: EMPLOYEES with active jobs
-    SELECT 
+
+      AND (
+          :search IS NULL OR :search = '' OR
+          LOWER(ud.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+
+    UNION ALL
+
+    -- PART 2: Employees with active jobs
+    SELECT DISTINCT
         ud.user_id AS recruiterId,
         ud.user_name AS recruiterName,
         r.job_id AS jobId,
-        r.client_name as clientName,
+        r.client_name AS clientName,
+
         COALESCE((
-              SELECT b.on_boarded_by\s
-              FROM bdm_client b\s
-              WHERE FIND_IN_SET(b.client_name, REPLACE(r.client_name, '_', ',')) > 0
-              ORDER BY FIELD(b.client_name, SUBSTRING_INDEX(r.client_name, '_', 1)) DESC
-              LIMIT 1
+            SELECT b.on_boarded_by
+            FROM bdm_client b
+            WHERE FIND_IN_SET(b.client_name, REPLACE(r.client_name, '_', ',')) > 0
+            LIMIT 1
         ), 'N/A') AS bdm,
+
         COALESCE(r.assigned_by, 'N/A') AS teamlead,
         r.job_title AS technology,
+
         DATE_FORMAT(r.requirement_added_time_stamp, '%Y-%m-%d') AS postedDate,
         DATE_FORMAT(r.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedDateTime,
+
         (
             SELECT COUNT(DISTINCT cs.submission_id)
             FROM candidate_submissions cs
             WHERE cs.job_id = r.job_id
               AND cs.user_id = ud.user_id
               AND (
-                (:isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE)
-                OR (:isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate)
-              )
+                    (:isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE)
+                    OR (:isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate)
+                  )
         ) AS numberOfSubmissions,
+
         (
             SELECT COUNT(DISTINCT cs.submission_id)
             FROM candidate_submissions cs
@@ -1558,33 +1637,136 @@ UNION ALL
               AND cs.user_id = ud.user_id
               AND cs.status = 'SCREEN REJECT'
               AND (
-                (:isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE)
-                OR (:isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate)
-              )
+                    (:isToday = true AND DATE(cs.submitted_at) = CURRENT_DATE)
+                    OR (:isToday = false AND DATE(cs.submitted_at) BETWEEN :startDate AND :endDate)
+                  )
         ) AS numberOfScreenReject,
+
         r.job_title AS jobTitle,
         r.job_mode AS jobMode,
         r.job_type AS jobType,
         r.experience_required AS experienceRequired,
+<<<<<<< HEAD
         r.relevant_experience AS relevantExperience,
         DATE_FORMAT(ud.last_login_time, '%Y-%m-%d %H:%i:%s') AS lastLoginTime
+=======
+        r.relevant_experience AS relevantExperience
+
+>>>>>>> bc55fe5222f2e7c2063fbfd231155103dc45bb6a
     FROM user_details ud
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
     JOIN job_recruiters jr ON jr.recruiter_id = ud.user_id
     JOIN requirements_model r ON jr.job_id = r.job_id
-    LEFT JOIN bdm_client b ON r.client_name = b.client_name
-    WHERE r.status IN ('In Progress', 'Submitted')
-    AND ud.status = 'ACTIVE' AND ud.entity = 'IN'
-    AND ud.designation != 'testuser'
+
+    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+      AND r.status IN ('In Progress', 'Submitted')
+      AND ud.status = 'ACTIVE'
+      AND ud.entity = 'IN'
+      AND ud.designation != 'testuser'
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
-)
+
+      AND (
+          :search IS NULL OR :search = '' OR
+          LOWER(ud.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%'))
+
+          OR LOWER(
+              COALESCE((
+                  SELECT b.on_boarded_by
+                  FROM bdm_client b
+                  WHERE FIND_IN_SET(b.client_name, REPLACE(r.client_name, '_', ',')) > 0
+                  LIMIT 1
+              ), 'N/A')
+          ) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+
+) final
 ORDER BY recruiterName
-""", nativeQuery = true)
-    List<Object[]> findInProgressRequirementsByDateRange(
+
+""",
+
+            countQuery = """
+
+SELECT COUNT(*) FROM (
+
+    SELECT DISTINCT
+        ud.user_id,
+        NULL AS job_id
+
+    FROM user_details ud
+    JOIN user_roles ur ON ud.user_id = ur.user_id
+    JOIN roles rl ON ur.role_id = rl.id
+
+    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+      AND ud.status = 'ACTIVE'
+      AND ud.entity = 'IN'
+      AND ud.designation != 'testuser'
+
+      AND NOT EXISTS (
+          SELECT 1
+          FROM job_recruiters jr
+          JOIN requirements_model r ON r.job_id = jr.job_id
+          WHERE jr.recruiter_id = ud.user_id
+            AND r.status IN ('In Progress', 'Submitted')
+            AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
+      )
+
+      AND (
+          :search IS NULL OR :search = '' OR
+          LOWER(ud.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+
+    UNION ALL
+
+    SELECT DISTINCT
+        ud.user_id,
+        r.job_id
+
+    FROM user_details ud
+    JOIN user_roles ur ON ud.user_id = ur.user_id
+    JOIN roles rl ON ur.role_id = rl.id
+    JOIN job_recruiters jr ON jr.recruiter_id = ud.user_id
+    JOIN requirements_model r ON jr.job_id = r.job_id
+
+    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+      AND r.status IN ('In Progress', 'Submitted')
+      AND ud.status = 'ACTIVE'
+      AND ud.entity = 'IN'
+      AND ud.designation != 'testuser'
+      AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
+
+      AND (
+          :search IS NULL OR :search = '' OR
+          LOWER(ud.user_name) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.job_title) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.client_name) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.assigned_by) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(r.job_id) LIKE LOWER(CONCAT('%', :search, '%'))
+
+          OR LOWER(
+              COALESCE((
+                  SELECT b.on_boarded_by
+                  FROM bdm_client b
+                  WHERE FIND_IN_SET(b.client_name, REPLACE(r.client_name, '_', ',')) > 0
+                  LIMIT 1
+              ), 'N/A')
+          ) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+
+) count_table
+
+""",
+            nativeQuery = true)
+    Page<Object[]> findInProgressRequirementsByDateRange(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("isToday") boolean isToday
+            @Param("isToday") boolean isToday,
+            @Param("search") String search,
+            Pageable pageable
     );
 
     @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +

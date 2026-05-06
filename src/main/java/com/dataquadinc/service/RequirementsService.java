@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,9 @@ import com.dataquadinc.repository.RequirementsDao;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class RequirementsService {
@@ -437,22 +441,22 @@ public class RequirementsService {
 	}
 
 
-	public Object getRequirementsDetails() {
-		// 1. Get the first and last date of the current month
-		LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
-		LocalDate endOfMonth = startOfMonth.plusMonths(1).minusDays(1);
+	public Page<RequirementsDto> getRequirementsDetails(int page, int size,String search) {
 
-		// 2. Fetch data from repository
-		List<RequirementsModel> requirementsList =
-				requirementsDao.findByRequirementAdded();
+		Pageable pageable = PageRequest.of(page, size, Sort.by("requirement_added_time_stamp").descending());
 
-		logger.info("Fetched no of Requirements {}", requirementsList.size());
+		Page<RequirementsModel> requirementsPage =
+				requirementsDao.searchRequirements(search,pageable);
 
-		// 3. Convert to DTOs
-		List<RequirementsDto> dtoList = requirementsList.stream()
+		logger.info("Fetched no of Requirements {}", requirementsPage.getTotalElements());
+
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
 				.map(requirement -> {
+
 					RequirementsDto dto = new RequirementsDto();
-					List<String> recruiterNames = requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());
+
+					List<String> recruiterNames =
+							requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());
 
 					dto.setJobId(requirement.getJobId());
 					dto.setJobTitle(requirement.getJobTitle());
@@ -475,76 +479,102 @@ public class RequirementsService {
 					dto.setAssignedBy(requirement.getAssignedBy());
 					dto.setUpdatedAt(requirement.getUpdatedAt());
 
-					// Submissions and Interviews
 					String jobId = requirement.getJobId();
 					dto.setNumberOfSubmissions(requirementsDao.getNumberOfSubmissionsByJobId(jobId));
 					dto.setNumberOfInterviews(requirementsDao.getNumberOfInterviewsByJobId(jobId));
 
-					// No need to manually set age anym
 					return dto;
 				})
 				.collect(Collectors.toList());
 
-		// 4. Return appropriate response
-		if (dtoList.isEmpty()) {
-			return new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Requirements Not Found", LocalDateTime.now());
-		} else {
-			return dtoList;
-		}
+		return new PageImpl<>(dtoList, pageable, requirementsPage.getTotalElements());
 	}
 
 
-	public List<RequirementsDto> getRequirementsByDateRange(LocalDate startDate, LocalDate endDate) {
+	public Page<RequirementsDto> getRequirementsByDateRange(
+			LocalDate startDate,
+			LocalDate endDate,
+			String search,
+			int page,
+			int size) {
 
-		// 💥 Second check: End date must not be before start date
+		// Validation
 		if (endDate.isBefore(startDate)) {
 			throw new DateRangeValidationException("End date cannot be before start date.");
 		}
 
+		// Convert LocalDate → LocalDateTime (FIX for 500 error)
+		LocalDateTime startDateTime = startDate.atStartOfDay();
+		LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-		List<RequirementsModel> requirements = requirementsDao.findByRequirementAddedTimeStampBetween(startDate, endDate);
+		// Pageable
+		Pageable pageable = PageRequest.of(
+				page,
+				size,
+				Sort.by("requirementAddedTimeStamp").descending()
+		);
 
-		if (requirements.isEmpty()) {
-			throw new RequirementNotFoundException("No requirements found between " + startDate + " and " + endDate);
+		// Fetch paginated data
+		Page<RequirementsModel> requirementsPage =
+				requirementsDao.findByDateRangeWithSearch(
+						startDateTime,
+						endDateTime,
+						search,
+						pageable
+				);
+
+		if (requirementsPage.isEmpty()) {
+			throw new RequirementNotFoundException(
+					"No requirements found between " + startDate + " and " + endDate
+			);
 		}
 
-		// ✅ Add logger here since this block is guaranteed to have results
-		Logger logger = LoggerFactory.getLogger(RequirementsService.class);
-		logger.info("✅ Fetched {} requirements between {} and {}", requirements.size(), startDate, endDate);
+		// Logging
+		logger.info("Fetched {} requirements between {} and {}",
+				requirementsPage.getTotalElements(), startDate, endDate);
 
-		return requirements.stream().map(requirement -> {
-			List<String> recruiterNames = requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
+				.map(requirement -> {
 
-			RequirementsDto dto = new RequirementsDto();
-			dto.setJobId(requirement.getJobId());
-			dto.setJobTitle(requirement.getJobTitle());
-			dto.setClientName(requirement.getClientName());
-			dto.setJobDescription(requirement.getJobDescription());
-			dto.setJobDescriptionBlob(requirement.getJobDescriptionBlob());
-			dto.setJobType(requirement.getJobType());
-			dto.setLocation(requirement.getLocation());
-			dto.setJobMode(requirement.getJobMode());
-			dto.setExperienceRequired(requirement.getExperienceRequired());
-			dto.setNoticePeriod(requirement.getNoticePeriod());
-			dto.setRelevantExperience(requirement.getRelevantExperience());
-			dto.setQualification(requirement.getQualification());
-			dto.setSalaryPackage(requirement.getSalaryPackage());
-			dto.setNoOfPositions(requirement.getNoOfPositions());
-			dto.setRequirementAddedTimeStamp(requirement.getRequirementAddedTimeStamp());
-			dto.setRecruiterIds(requirement.getRecruiterIds());
-			dto.setStatus(requirement.getStatus());
-			dto.setRecruiterName(new HashSet<>(recruiterNames));
-			dto.setAssignedBy(requirement.getAssignedBy());
+					List<String> recruiterNames =
+							requirementsDao.findRecruiterNamesByJobId(requirement.getJobId());
 
-			// Stats
-			String jobId = requirement.getJobId();
-			dto.setNumberOfSubmissions(requirementsDao.getNumberOfSubmissionsByJobId(jobId));
-			dto.setNumberOfInterviews(requirementsDao.getNumberOfInterviewsByJobId(jobId));
+					RequirementsDto dto = new RequirementsDto();
 
-			return dto;
-		}).collect(Collectors.toList());
+					dto.setJobId(requirement.getJobId());
+					dto.setJobTitle(requirement.getJobTitle());
+					dto.setClientName(requirement.getClientName());
+					dto.setJobDescription(requirement.getJobDescription());
+					dto.setJobDescriptionBlob(requirement.getJobDescriptionBlob());
+					dto.setJobType(requirement.getJobType());
+					dto.setLocation(requirement.getLocation());
+					dto.setJobMode(requirement.getJobMode());
+					dto.setExperienceRequired(requirement.getExperienceRequired());
+					dto.setNoticePeriod(requirement.getNoticePeriod());
+					dto.setRelevantExperience(requirement.getRelevantExperience());
+					dto.setQualification(requirement.getQualification());
+					dto.setSalaryPackage(requirement.getSalaryPackage());
+					dto.setNoOfPositions(requirement.getNoOfPositions());
+					dto.setRequirementAddedTimeStamp(requirement.getRequirementAddedTimeStamp());
+					dto.setRecruiterIds(requirement.getRecruiterIds());
+					dto.setStatus(requirement.getStatus());
+					dto.setRecruiterName(new HashSet<>(recruiterNames));
+					dto.setAssignedBy(requirement.getAssignedBy());
+
+
+					String jobId = requirement.getJobId();
+					dto.setNumberOfSubmissions(
+							requirementsDao.getNumberOfSubmissionsByJobId(jobId));
+					dto.setNumberOfInterviews(
+							requirementsDao.getNumberOfInterviewsByJobId(jobId));
+
+					return dto;
+				})
+				.collect(Collectors.toList());
+
+		//Return Page
+		return new PageImpl<>(dtoList, pageable, requirementsPage.getTotalElements());
 	}
-
 
 	public RequirementsDto getRequirementDetailsById(String jobId) {
 		RequirementsModel requirement = requirementsDao.findById(jobId)
@@ -1266,32 +1296,41 @@ public class RequirementsService {
 		return tuple.getElements().stream().anyMatch(e -> alias.equalsIgnoreCase(e.getAlias()));
 	}
 
-	public List<RequirementsDto> getRequirementsByAssignedBy(String userId) {
-		// 1. Check if the user exists
+	public Page<RequirementsDto> getRequirementsByAssignedBy(
+			String userId,String search, int page, int size) {
+
+		//Validate user
 		int userExists = requirementsDao.countByUserId(userId);
 		if (userExists == 0) {
-			logger.warn("User ID '{}' not found in the database", userId);
-			throw new ResourceNotFoundException("User ID '" + userId + "' not found in the database.");
+			logger.warn("User ID '{}' not found", userId);
+			throw new ResourceNotFoundException(
+					"User ID '" + userId + "' not found in the database.");
 		}
 
-		// 2. Get the user_name of the recruiter
+		//Get assignedBy name
 		String assignedBy = requirementsDao.findUserNameByUserId(userId);
 
-		// 3. Get current month start and end datetime
+		//Date range
 		LocalDate today = LocalDate.now();
 		LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
 		LocalDateTime endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(LocalTime.MAX);
 
-		// 4. Fetch requirements
-		List<RequirementsModel> requirements = requirementsDao.findJobsAssignedByName(assignedBy, startOfMonth, endOfMonth);
+		//Pageable
+		Pageable pageable = PageRequest.of(page, size,
+				Sort.by("requirementAddedTimeStamp").descending());
 
-		// 5. Logging
-		logger.info("Fetched {} requirements for user ID '{}' (assigned_by='{}') for current month {} to {}",
-				requirements.size(), userId, assignedBy, startOfMonth.toLocalDate(), endOfMonth.toLocalDate());
+		//Fetch paginated data
+		Page<RequirementsModel> requirementsPage =
+				requirementsDao.findJobsAssignedByNameWithSearch(
+						assignedBy, startOfMonth, endOfMonth,search, pageable);
 
-		// 6. Map to DTO
-		return requirements.stream()
+		logger.info("Fetched {} requirements for user ID '{}' (assigned_by='{}')",
+				requirementsPage.getTotalElements(), userId, assignedBy);
+
+		//Map to DTO
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
 				.map(requirement -> {
+
 					RequirementsDto dto = new RequirementsDto();
 
 					dto.setJobId(requirement.getJobId());
@@ -1312,12 +1351,17 @@ public class RequirementsService {
 					dto.setRecruiterIds(requirement.getRecruiterIds());
 					dto.setStatus(requirement.getStatus());
 					dto.setAssignedBy(requirement.getAssignedBy());
-					dto.setNumberOfSubmissions(requirementsDao.getNumberOfSubmissionsByJobId(requirement.getJobId()));
-					dto.setNumberOfInterviews(requirementsDao.getNumberOfInterviewsByJobId(requirement.getJobId()));
+
+					dto.setNumberOfSubmissions(
+							requirementsDao.getNumberOfSubmissionsByJobId(requirement.getJobId()));
+					dto.setNumberOfInterviews(
+							requirementsDao.getNumberOfInterviewsByJobId(requirement.getJobId()));
 
 					return dto;
-				})
-				.collect(Collectors.toList());
+
+				}).collect(Collectors.toList());
+
+		return new PageImpl<>(dtoList, pageable, requirementsPage.getTotalElements());
 	}
 
 	public List<RequirementsDto> getRequirementsByAssignedByAndDateRange(String userId, LocalDate startDate, LocalDate endDate) {
@@ -1503,38 +1547,43 @@ public class RequirementsService {
 		);
 	}
 
-	public List<InProgressRequirementDTO> getInProgressRequirements(LocalDate startDate, LocalDate endDate) {
-		log.info("🔍 Fetching 'In Progress' requirements between {} and {}", startDate, endDate);
+    public Map<String, Object> getInProgressRequirements(
+            LocalDate startDate,
+            LocalDate endDate,
+            int page,
+            int size,
+            String search) {
 
-		boolean isToday = startDate.equals(endDate) && startDate.equals(LocalDate.now());
+        boolean isToday = startDate.equals(endDate) && startDate.equals(LocalDate.now());
 
-		List<Object[]> results = requirementsDao.findInProgressRequirementsByDateRange(startDate, endDate, isToday);
-		log.debug("✅ Raw DB results fetched: {}", results.size());
+        Pageable pageable = PageRequest.of(page, size);
 
-		List<InProgressRequirementDTO> dtos = new ArrayList<>();
+        Page<Object[]> pageResult =
+                requirementsDao.findInProgressRequirementsByDateRange(
+                        startDate, endDate, isToday, search, pageable);
 
-		for (Object[] row : results) {
-			try {
-				InProgressRequirementDTO dto = mapRowToDTO(row);
-				if (dto != null) {
-					dtos.add(dto);
-				}
-			} catch (Exception ex) {
-				log.error("❌ Error mapping row to DTO: {}", Arrays.toString(row), ex);
-			}
-		}
+        List<InProgressRequirementDTO> dtos = new ArrayList<>();
 
-		log.info("✅ Successfully mapped {} simplified In Progress requirements.", dtos.size());
+        for (Object[] row : pageResult.getContent()) {
+            dtos.add(mapRowToDTO(row));
+        }
 
-		dtos.sort(
-				Comparator.comparing(
-						InProgressRequirementDTO::getUpdatedDateTime,
-						Comparator.nullsLast(Comparator.reverseOrder())
-				)
-		);
+        dtos.sort(
+                Comparator.comparing(
+                        InProgressRequirementDTO::getUpdatedDateTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+        );
 
-		return dtos;
-	}
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", dtos);
+        response.put("currentPage", pageResult.getNumber());
+        response.put("pageSize", pageResult.getSize());
+        response.put("totalElements", pageResult.getTotalElements());
+        response.put("totalPages", pageResult.getTotalPages());
+
+        return response;
+    }
 
 	private InProgressRequirementDTO mapRowToDTO(Object[] row) {
 		String recruiterId = (String) row[0];
@@ -1623,65 +1672,66 @@ public class RequirementsService {
 	}
 
 
-	public String sendInProgressEmail(String userId, List<InProgressRequirementDTO> requirements) {
-		String recruiterName;
+    public String sendInProgressEmail(String userId, List<InProgressRequirementDTO> requirements) {
+        String recruiterName;
+        LocalDate today = LocalDate.now();
 
-		// ✅ If userId is null or "null", treat it as request for all recruiters
-		if (userId == null || "null".equalsIgnoreCase(userId)) {
-			recruiterName = "All Recruiters";
+        if (userId == null || "null".equalsIgnoreCase(userId)) {
+            recruiterName = "All Recruiters";
 
-			// 🔁 If no requirements provided, fetch from DB
-			if (requirements == null) {
-				LocalDate today = LocalDate.now();
-				requirements = getInProgressRequirements(today, today);
-			}
+            if (requirements == null) {
+                Map<String, Object> response =
+                        getInProgressRequirements(today, today, 0, Integer.MAX_VALUE,null);
 
-		} else {
-			recruiterName = requirementsDao.findUserNameByUserId(userId);
-			if (recruiterName == null || recruiterName.isEmpty()) {
-				throw new UserNotFoundException("No User Found with User Id: " + userId);
-			}
+                requirements = (List<InProgressRequirementDTO>) response.get("content");
+            }
 
-			if (requirements == null) {
-				throw new IllegalArgumentException("❌ Recruiter-specific email requires data in request body.");
-			}
+        } else {
+            recruiterName = requirementsDao.findUserNameByUserId(userId);
+            if (recruiterName == null || recruiterName.isEmpty()) {
+                throw new UserNotFoundException("No User Found with User Id: " + userId);
+            }
 
-			// 🔍 Filter only this recruiter's data
-			requirements = requirements.stream()
-					.filter(r -> userId.equals(r.getRecruiterId()))
-					.collect(Collectors.toList());
-		}
+            if (requirements == null) {
+                throw new IllegalArgumentException("Recruiter-specific email requires data in request body.");
+            }
 
-		if (requirements == null || requirements.isEmpty()) {
-			return "⚠️ No InProgress data found for: " + recruiterName;
-		}
+            requirements = requirements.stream()
+                    .filter(r -> userId.equals(r.getRecruiterId()))
+                    .collect(Collectors.toList());
+        }
 
-		logger.info("📨 Preparing to send InProgress email for: {}", recruiterName);
+        if (requirements == null || requirements.isEmpty()) {
+            return "No InProgress data found for: " + recruiterName;
+        }
 
-		requirements.sort(Comparator
-				.comparing((InProgressRequirementDTO dto) ->
-						Optional.ofNullable(dto.getTeamlead()).orElse("zzzzzz"), String.CASE_INSENSITIVE_ORDER)
-				.thenComparing(InProgressRequirementDTO::getUpdatedDateTime,
-						Comparator.nullsLast(Comparator.reverseOrder()))
-		);
+        logger.info("Preparing to send InProgress email for: {}", recruiterName);
 
-		String subject = "InProgress Stats - " + recruiterName + " " + LocalDate.now();
+        requirements.sort(Comparator
+                .comparing((InProgressRequirementDTO dto) ->
+                        Optional.ofNullable(dto.getTeamlead()).orElse("zzzzzz"), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(InProgressRequirementDTO::getUpdatedDateTime,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+        );
 
-		String html = (userId == null || "null".equalsIgnoreCase(userId))
-				? buildTeamleadWiseEmail(requirements)
-				: buildRecruiterWiseEmail(requirements, recruiterName);
+        String subject = "InProgress Stats - " + recruiterName + " " + today;
 
-		List<String> recipients = requirementsDao.findEmailsByDesignationIgnoreCase("director");
+        String html = (userId == null || "null".equalsIgnoreCase(userId))
+                ? buildTeamleadWiseEmail(requirements)
+                : buildRecruiterWiseEmail(requirements, recruiterName);
 
-		if (recipients.isEmpty()) {
-			throw new RuntimeException("No recipients found with designation = 'director'");
-		}
+        List<String> recipients = requirementsDao.findEmailsByDesignationIgnoreCase("director");
 
-		for (String email : recipients) {
-			emailService.sendEmail(email, subject, html);
-		}
-		return "✅ Email Sent Successfully for: " + recruiterName;
-	}
+        if (recipients.isEmpty()) {
+            throw new RuntimeException("No recipients found with designation = 'director'");
+        }
+
+        for (String email : recipients) {
+            emailService.sendEmail(email, subject, html);
+        }
+
+        return "Email Sent Successfully for: " + recruiterName;
+    }
 
 	private String buildTeamleadWiseEmail(List<InProgressRequirementDTO> requirements) {
 		StringBuilder sb = new StringBuilder();

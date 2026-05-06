@@ -7,6 +7,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -18,19 +19,26 @@ public class InProgressEmailScheduler {
         this.requirementsService = requirementsService;
     }
 
-    @Scheduled(cron = "0 0 18 * * ?",zone = "Asia/Kolkata") 
+    @Scheduled(cron = "0 0 18 * * ?",zone = "Asia/Kolkata")
     public void sendDailyInProgressReportEmail() {
         try {
-            // 🔍 Get requirements from today
             LocalDate today = LocalDate.now();
-            List<InProgressRequirementDTO> requirements = requirementsService.getInProgressRequirements(today, today);
 
-            // ✅ Send for all recruiters (userId = null)
+            // FIX: get Map response instead of List
+            Map<String, Object> response =
+                    requirementsService.getInProgressRequirements(today, today, 0, Integer.MAX_VALUE,null);
+
+            // Extract actual list
+            List<InProgressRequirementDTO> requirements =
+                    (List<InProgressRequirementDTO>) response.get("content");
+
+            // Send for all recruiters
             String result = requirementsService.sendInProgressEmail(null, requirements);
-            System.out.println("✅ Email Sent Successfully: " + result);
+
+            System.out.println("Email Sent Successfully: " + result);
 
         } catch (Exception e) {
-            System.err.println("❌ Error sending scheduled email: " + e.getMessage());
+            System.err.println("Error sending scheduled email: " + e.getMessage());
             e.printStackTrace();
         }
     }

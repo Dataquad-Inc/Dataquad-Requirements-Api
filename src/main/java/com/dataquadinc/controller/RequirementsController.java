@@ -32,9 +32,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
 
 import com.dataquadinc.service.RequirementsService;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
 
 
 @CrossOrigin(origins = {"http://35.188.150.92", "http://192.168.0.140:3000", "http://192.168.0.139:3000","https://mymulya.com","http://localhost:3000",
@@ -260,18 +266,19 @@ public class RequirementsController {
 
 
 	@GetMapping("/getAssignments")
-	public ResponseEntity<?> getRequirements() {
-		List<RequirementsDto> requirements = (List<RequirementsDto>) service.getRequirementsDetails();
+	public ResponseEntity<?> getRequirements(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size,
+			@RequestParam(required = false) String search){
 
+		Page<RequirementsDto> requirements = service.getRequirementsDetails(page, size,search);
 
-		// Clean up recruiterName field
-		for (RequirementsDto dto : requirements) {
+		requirements.getContent().forEach(dto -> {
 			Set<String> cleanedNames = dto.getRecruiterName().stream()
-					.map(name -> name.replaceAll("[\\[\\]\"]", "")) // Remove brackets and extra quotes
+					.map(name -> name.replaceAll("[\\[\\]\"]", ""))
 					.collect(Collectors.toSet());
-
 			dto.setRecruiterName(cleanedNames);
-		}
+		});
 
 		return new ResponseEntity<>(requirements, HttpStatus.OK);
 	}
@@ -279,21 +286,25 @@ public class RequirementsController {
 	@GetMapping("/filterByDate")
 	public ResponseEntity<?> getRequirementsByDateRange(
 			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+			@RequestParam(required = false) String search,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
 
-		List<RequirementsDto> requirements = service.getRequirementsByDateRange(startDate, endDate);
+		Page<RequirementsDto> requirements =
+				service.getRequirementsByDateRange(startDate, endDate,search, page, size);
 
-		for (RequirementsDto dto : requirements) {
+		requirements.getContent().forEach(dto -> {
 			Set<String> cleanedNames = dto.getRecruiterName().stream()
 					.map(name -> name.replaceAll("[\\[\\]\"]", ""))
 					.collect(Collectors.toSet());
 			dto.setRecruiterName(cleanedNames);
-		}
+		});
 
-		// ✅ This log will now appear last
-		ResponseEntity<?> response = new ResponseEntity<>(requirements, HttpStatus.OK);
-		logger.info("✅ Fetched {} requirements between {} and {}", requirements.size(), startDate, endDate);
-		return response;
+		logger.info("Fetched {} requirements between {} and {}",
+				requirements.getTotalElements(), startDate, endDate);
+
+		return new ResponseEntity<>(requirements, HttpStatus.OK);
 	}
 
 
@@ -626,26 +637,35 @@ public class RequirementsController {
 	}
 
 
-
-
 	@GetMapping("/teamleadrequirements/{id}")
-	public List<RequirementsDto> getRequirementsByAssignedBy(@PathVariable("id") String id) {
-		List<RequirementsDto> requirements = service.getRequirementsByAssignedBy(id);
+	public ResponseEntity<?> getRequirementsByAssignedBy(
+			@PathVariable("id") String id,
+			@RequestParam(required = false) String search,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
 
-		// Clean recruiterName (if needed)
-		for (RequirementsDto dto : requirements) {
+		Page<RequirementsDto> requirements =
+				service.getRequirementsByAssignedBy(id, search,page, size);
+
+		// Clean recruiterName
+		requirements.getContent().forEach(dto -> {
 			if (dto.getRecruiterName() != null) {
 				Set<String> cleanedNames = dto.getRecruiterName().stream()
 						.map(recruiter -> recruiter.replaceAll("[\\[\\]\"]", "").trim())
 						.collect(Collectors.toSet());
 				dto.setRecruiterName(cleanedNames);
 			}
-		}
+		});
 
-		return requirements;
+		return new ResponseEntity<>(requirements, HttpStatus.OK);
 	}
+
 	@GetMapping("/coordinatorRequirements/{id}")
-	public List<RequirementsDto> getCoordinatorsRequirements(@PathVariable("id") String id) {
+	public ResponseEntity<?> getCoordinatorsRequirements(
+			@PathVariable("id") String id,
+			@RequestParam(required = false) String search,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
 
 		// Fetch team assignments
 		List<TeamAssignment> assignments = userFeignClient.getUserByUserID(id)
@@ -655,26 +675,27 @@ public class RequirementsController {
 
 		// Handle null/empty list
 		if (assignments == null || assignments.isEmpty()) {
-			return Collections.emptyList();
+			return new ResponseEntity<>(Page.empty(), HttpStatus.OK);
 		}
 
 		// Get first teamLeadId
 		String teamLeadId = assignments.get(0).getTeamLeadId();
 
-		// Fetch requirements
-		List<RequirementsDto> requirements = service.getRequirementsByAssignedBy(teamLeadId);
+		// Fetch paginated requirements
+		Page<RequirementsDto> requirements =
+				service.getRequirementsByAssignedBy(teamLeadId,search, page, size);
 
-		// Clean recruiterName (if needed)
-		for (RequirementsDto dto : requirements) {
+		// Clean recruiterName
+		requirements.getContent().forEach(dto -> {
 			if (dto.getRecruiterName() != null) {
 				Set<String> cleanedNames = dto.getRecruiterName().stream()
 						.map(recruiter -> recruiter.replaceAll("[\\[\\]\"]", "").trim())
 						.collect(Collectors.toSet());
 				dto.setRecruiterName(cleanedNames);
 			}
-		}
+		});
 
-		return requirements;
+		return new ResponseEntity<>(requirements, HttpStatus.OK);
 	}
 
 
@@ -736,37 +757,53 @@ public class RequirementsController {
 	}
 
 
-	@GetMapping("/inprogress")
-	public ResponseEntity<List<InProgressRequirementDTO>> getInProgressRequirements(
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+    @GetMapping("/inprogress")
+    public ResponseEntity<Map<String, Object>> getInProgressRequirements(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-		if (startDate == null || endDate == null) {
-			LocalDate today = LocalDate.now();
-			startDate = today;
-			endDate = today;
-			logger.info("StartDate or EndDate not provided. Using today's date: {}", today);
-		}
+        if (startDate == null || endDate == null) {
+            LocalDate today = LocalDate.now();
+            startDate = today;
+            endDate = today;
+        }
 
-		List<InProgressRequirementDTO> result = service.getInProgressRequirements(startDate, endDate);
-		return ResponseEntity.ok(result);
-	}
+        Map<String, Object> result =
+                service.getInProgressRequirements(startDate, endDate, page, size, search);
 
-	@GetMapping("/inprogress/filterByDate")
-	public ResponseEntity<List<InProgressRequirementDTO>> getInProgressRequirementsWithDateRange(
-			@RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-			@RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(result);
+    }
 
-		if (startDate != null && endDate != null) {
-			logger.info("📅 Fetching In Progress requirements from {} to {}", startDate, endDate);
-			return ResponseEntity.ok(service.getInProgressRequirements(startDate, endDate));
-		} else {
-			// Default to today if no dates provided
-			LocalDate today = LocalDate.now();
-			logger.info("📅 No date range provided. Fetching for today: {}", today);
-			return ResponseEntity.ok(service.getInProgressRequirements(today, today));
-		}
-	}
+    @GetMapping("/inprogress/filterByDate")
+    public ResponseEntity<Map<String, Object>> getInProgressRequirementsWithDateRange(
+            @RequestParam(value = "startDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @RequestParam(value = "endDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (startDate != null && endDate != null) {
+            logger.info("Fetching In Progress requirements from {} to {}", startDate, endDate);
+
+            return ResponseEntity.ok(
+                    service.getInProgressRequirements(startDate, endDate, page, size, search)
+            );
+
+        } else {
+            LocalDate today = LocalDate.now();
+            logger.info("No date range provided. Fetching for today: {}", today);
+
+            return ResponseEntity.ok(
+                    service.getInProgressRequirements(today, today, page, size, search)
+            );
+        }
+    }
 
 	@PostMapping("/sendInprogressEmail/{userId}")
 	public ResponseEntity<String> sendEmail(
