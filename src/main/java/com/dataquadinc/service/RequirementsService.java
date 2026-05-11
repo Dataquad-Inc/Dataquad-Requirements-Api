@@ -788,14 +788,40 @@ public class RequirementsService {
 			// Log after update
 			logger.info("After update: " + existingRequirement);
 
-			// Send emails to recruiters (after the requirement has been successfully updated)
-			sendEmailsToRecruiters(existingRequirement); // Assuming this method handles the sending of emails to recruiters
+			new Thread(() -> {
 
-			// Return success response
-			return new ResponseBean(true, "Updated Successfully", null, null);
+				try {
+
+					sendEmailsToRecruiters(existingRequirement);
+
+				} catch (Exception e) {
+
+					logger.error(
+							"Failed to send emails for jobId: {}",
+							existingRequirement.getJobId(),
+							e
+					);
+				}
+
+			}).start();
+			// Return success response immediately
+			return new ResponseBean(
+					true,
+					"Updated Successfully",
+					null,
+					null
+			);
+
 		} catch (Exception e) {
-			logger.error("Error updating requirement", e.getMessage());
-			return new ResponseBean(false, "Error updating requirement" + e.getMessage(), "Internal Server Error", null);
+
+			logger.error("Error updating requirement", e);
+
+			return new ResponseBean(
+					false,
+					"Error updating requirement " + e.getMessage(),
+					"Internal Server Error",
+					null
+			);
 		}
 	}
 
