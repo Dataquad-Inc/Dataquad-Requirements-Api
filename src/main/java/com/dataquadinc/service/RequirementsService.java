@@ -1390,6 +1390,77 @@ public class RequirementsService {
 		return new PageImpl<>(dtoList, pageable, requirementsPage.getTotalElements());
 	}
 
+	public Page<RequirementsDto> getRequirementsByAssignedByUsers(
+			List<String> userIds, String search, int page, int size) {
+
+		List<String> assignedByNames = userIds.stream()
+				.filter(userId -> userId != null && !userId.trim().isEmpty())
+				.map(userId -> {
+					int userExists = requirementsDao.countByUserId(userId);
+					if (userExists == 0) {
+						logger.warn("Skipping missing coordinator hierarchy user ID '{}'", userId);
+						return null;
+					}
+					return requirementsDao.findUserNameByUserId(userId);
+				})
+				.filter(Objects::nonNull)
+				.distinct()
+				.collect(Collectors.toList());
+
+		Pageable pageable = PageRequest.of(page, size,
+				Sort.by("requirementAddedTimeStamp").descending());
+
+		if (assignedByNames.isEmpty()) {
+			return Page.empty(pageable);
+		}
+
+		LocalDate today = LocalDate.now();
+		LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+		LocalDateTime endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(LocalTime.MAX);
+
+		Page<RequirementsModel> requirementsPage =
+				requirementsDao.findJobsAssignedByNamesWithSearch(
+						assignedByNames, startOfMonth, endOfMonth, search, pageable);
+
+		logger.info("Fetched {} requirements for user IDs '{}' (assigned_by='{}')",
+				requirementsPage.getTotalElements(), userIds, assignedByNames);
+
+		List<RequirementsDto> dtoList = requirementsPage.getContent().stream()
+				.map(requirement -> {
+
+					RequirementsDto dto = new RequirementsDto();
+
+					dto.setJobId(requirement.getJobId());
+					dto.setJobTitle(requirement.getJobTitle());
+					dto.setClientName(requirement.getClientName());
+					dto.setJobDescription(requirement.getJobDescription());
+					dto.setJobDescriptionBlob(requirement.getJobDescriptionBlob());
+					dto.setJobType(requirement.getJobType());
+					dto.setLocation(requirement.getLocation());
+					dto.setJobMode(requirement.getJobMode());
+					dto.setExperienceRequired(requirement.getExperienceRequired());
+					dto.setNoticePeriod(requirement.getNoticePeriod());
+					dto.setRelevantExperience(requirement.getRelevantExperience());
+					dto.setQualification(requirement.getQualification());
+					dto.setSalaryPackage(requirement.getSalaryPackage());
+					dto.setNoOfPositions(requirement.getNoOfPositions());
+					dto.setRequirementAddedTimeStamp(requirement.getRequirementAddedTimeStamp());
+					dto.setRecruiterIds(requirement.getRecruiterIds());
+					dto.setStatus(requirement.getStatus());
+					dto.setAssignedBy(requirement.getAssignedBy());
+
+					dto.setNumberOfSubmissions(
+							requirementsDao.getNumberOfSubmissionsByJobId(requirement.getJobId()));
+					dto.setNumberOfInterviews(
+							requirementsDao.getNumberOfInterviewsByJobId(requirement.getJobId()));
+
+					return dto;
+
+				}).collect(Collectors.toList());
+
+		return new PageImpl<>(dtoList, pageable, requirementsPage.getTotalElements());
+	}
+
 	public List<RequirementsDto> getRequirementsByAssignedByAndDateRange(String userId, LocalDate startDate, LocalDate endDate) {
 		// 1. Validate date range
 		if (startDate == null || endDate == null) {

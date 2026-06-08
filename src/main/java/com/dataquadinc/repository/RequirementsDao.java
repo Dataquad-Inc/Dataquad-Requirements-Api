@@ -702,6 +702,30 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             Pageable pageable
     );
 
+    @Query("SELECT r FROM RequirementsModel r " +
+            "WHERE r.assignedBy IN :assignedByNames " +
+            "AND r.status IN ('Submitted','In Progress') " +
+            "AND (" +
+            "   r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate" +
+            ") " +
+            "AND (" +
+            "   :search IS NULL OR " +
+            "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobTitle) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.clientName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.location) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.jobType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.status) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "   LOWER(r.assignedBy) LIKE LOWER(CONCAT('%', :search, '%'))" +
+            ")")
+    Page<RequirementsModel> findJobsAssignedByNamesWithSearch(
+            @Param("assignedByNames") List<String> assignedByNames,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
 
 
     @Query(value = """
