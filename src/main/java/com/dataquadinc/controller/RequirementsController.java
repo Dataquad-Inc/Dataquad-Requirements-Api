@@ -663,6 +663,7 @@ public class RequirementsController {
 	@GetMapping("/coordinatorRequirements/{id}")
 	public ResponseEntity<?> getCoordinatorsRequirements(
 			@PathVariable("id") String id,
+			@RequestParam(required = false) String role,
 			@RequestParam(required = false) String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
@@ -678,12 +679,23 @@ public class RequirementsController {
 			return new ResponseEntity<>(Page.empty(), HttpStatus.OK);
 		}
 
-		// Get first teamLeadId
-		String teamLeadId = assignments.get(0).getTeamLeadId();
+		List<String> teamLeadIds = assignments.stream()
+				.map(TeamAssignment::getTeamLeadId)
+				.filter(teamLeadId -> teamLeadId != null && !teamLeadId.trim().isEmpty())
+				.distinct()
+				.collect(Collectors.toList());
 
-		// Fetch paginated requirements
-		Page<RequirementsDto> requirements =
-				service.getRequirementsByAssignedBy(teamLeadId,search, page, size);
+		if (teamLeadIds.isEmpty()) {
+			return new ResponseEntity<>(Page.empty(), HttpStatus.OK);
+		}
+
+		Page<RequirementsDto> requirements;
+		if ("teamlead".equalsIgnoreCase(role)) {
+			requirements = service.getRequirementsByAssignedBy(teamLeadIds.get(0), search, page, size);
+		} else {
+			List<String> coordinatorUserIds = getCoordinatorRequirementUserIds(id, teamLeadIds);
+			requirements = service.getRequirementsByAssignedByUsers(coordinatorUserIds, search, page, size);
+		}
 
 		// Clean recruiterName
 		requirements.getContent().forEach(dto -> {
@@ -696,6 +708,75 @@ public class RequirementsController {
 		});
 
 		return new ResponseEntity<>(requirements, HttpStatus.OK);
+	}
+
+	private List<String> getCoordinatorRequirementUserIds(String coordinatorId, List<String> teamLeadIds) {
+		Set<String> teamLeadIdSet = teamLeadIds.stream()
+				.filter(teamLeadId -> teamLeadId != null && !teamLeadId.trim().isEmpty())
+				.map(String::trim)
+				.collect(Collectors.toSet());
+
+		Set<String> userIds = new java.util.LinkedHashSet<>();
+		if (coordinatorId != null && !coordinatorId.trim().isEmpty()) {
+			userIds.add(coordinatorId.trim());
+		}
+		userIds.addAll(teamLeadIdSet);
+
+		try {
+			ApiResponse<List<UserDto>> usersResponse = userFeignClient.getAllUsers();
+			List<UserDto> users = usersResponse != null ? usersResponse.getData() : Collections.emptyList();
+
+			if (users == null || users.isEmpty()) {
+				return new ArrayList<>(userIds);
+			}
+
+			for (UserDto user : users) {
+				if (user == null || user.getUserId() == null || user.getUserId().trim().isEmpty()) {
+					continue;
+				}
+
+				if (!isActiveInUser(user)) {
+					continue;
+				}
+
+				String userId = user.getUserId().trim();
+				String associatedTeamLeadId = user.getAssociatedTeamLeadId();
+				if (associatedTeamLeadId != null) {
+					String associatedId = associatedTeamLeadId.trim();
+					if (teamLeadIdSet.contains(associatedId) || associatedId.equalsIgnoreCase(coordinatorId)) {
+						userIds.add(userId);
+						continue;
+					}
+				}
+
+				List<TeamAssignment> userAssignments = user.getTeamAssignments();
+				if (userAssignments == null || userAssignments.isEmpty()) {
+					continue;
+				}
+
+				boolean belongsToCoordinatorTeam = userAssignments.stream()
+						.map(TeamAssignment::getTeamLeadId)
+						.filter(teamLeadId -> teamLeadId != null && !teamLeadId.trim().isEmpty())
+						.map(String::trim)
+						.anyMatch(teamLeadId -> teamLeadIdSet.contains(teamLeadId) || teamLeadId.equalsIgnoreCase(coordinatorId));
+
+				if (belongsToCoordinatorTeam) {
+					userIds.add(userId);
+				}
+			}
+		} catch (Exception ex) {
+			logger.warn("Unable to expand coordinator requirement users for coordinatorId '{}': {}",
+					coordinatorId, ex.getMessage());
+		}
+
+		return new ArrayList<>(userIds);
+	}
+
+	private boolean isActiveInUser(UserDto user) {
+		String status = user.getStatus();
+		String entity = user.getEntity();
+		return (status == null || !"inactive".equalsIgnoreCase(status.trim()))
+				&& (entity == null || "IN".equalsIgnoreCase(entity.trim()));
 	}
 
 
