@@ -1602,9 +1602,12 @@ SELECT * FROM (
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
 
-    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+    WHERE (
+          (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
+          OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
+      )
       AND ud.status = 'ACTIVE'
-      AND ud.entity = 'IN'
+      AND ud.entity = :entity
       AND ud.designation != 'testuser'
 
       AND NOT EXISTS (
@@ -1678,10 +1681,13 @@ SELECT * FROM (
     JOIN job_recruiters jr ON jr.recruiter_id = ud.user_id
     JOIN requirements_model r ON jr.job_id = r.job_id
 
-    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+    WHERE (
+          (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
+          OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
+      )
       AND r.status IN ('In Progress', 'Submitted')
       AND ud.status = 'ACTIVE'
-      AND ud.entity = 'IN'
+      AND ud.entity = :entity
       AND ud.designation != 'testuser'
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
@@ -1720,9 +1726,12 @@ SELECT COUNT(*) FROM (
     JOIN user_roles ur ON ud.user_id = ur.user_id
     JOIN roles rl ON ur.role_id = rl.id
 
-    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+    WHERE (
+          (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
+          OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
+      )
       AND ud.status = 'ACTIVE'
-      AND ud.entity = 'IN'
+      AND ud.entity = :entity
       AND ud.designation != 'testuser'
 
       AND NOT EXISTS (
@@ -1751,10 +1760,13 @@ SELECT COUNT(*) FROM (
     JOIN job_recruiters jr ON jr.recruiter_id = ud.user_id
     JOIN requirements_model r ON jr.job_id = r.job_id
 
-    WHERE rl.name IN ('EMPLOYEE','TEAMLEAD')
+    WHERE (
+          (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
+          OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
+      )
       AND r.status IN ('In Progress', 'Submitted')
       AND ud.status = 'ACTIVE'
-      AND ud.entity = 'IN'
+      AND ud.entity = :entity
       AND ud.designation != 'testuser'
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
@@ -1785,6 +1797,7 @@ SELECT COUNT(*) FROM (
             @Param("endDate") LocalDate endDate,
             @Param("isToday") boolean isToday,
             @Param("search") String search,
+            @Param("entity") String entity,
             Pageable pageable
     );
 

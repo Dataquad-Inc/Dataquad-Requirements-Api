@@ -843,6 +843,7 @@ public class RequirementsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "IN") String entity,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -853,7 +854,7 @@ public class RequirementsController {
         }
 
         Map<String, Object> result =
-                service.getInProgressRequirements(startDate, endDate, page, size, search);
+                service.getInProgressRequirements(startDate, endDate, page, size, search, entity);
 
         return ResponseEntity.ok(result);
     }
@@ -866,6 +867,7 @@ public class RequirementsController {
             @RequestParam(value = "endDate", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "IN") String entity,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -873,7 +875,7 @@ public class RequirementsController {
             logger.info("Fetching In Progress requirements from {} to {}", startDate, endDate);
 
             return ResponseEntity.ok(
-                    service.getInProgressRequirements(startDate, endDate, page, size, search)
+                    service.getInProgressRequirements(startDate, endDate, page, size, search, entity)
             );
 
         } else {
@@ -881,7 +883,7 @@ public class RequirementsController {
             logger.info("No date range provided. Fetching for today: {}", today);
 
             return ResponseEntity.ok(
-                    service.getInProgressRequirements(today, today, page, size, search)
+                    service.getInProgressRequirements(today, today, page, size, search, entity)
             );
         }
     }
