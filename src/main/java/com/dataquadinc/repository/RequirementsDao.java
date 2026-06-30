@@ -1606,6 +1606,7 @@ SELECT * FROM (
           (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
           OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
       )
+      AND :entity <> 'US'
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
       AND ud.designation != 'testuser'
@@ -1730,6 +1731,7 @@ SELECT COUNT(*) FROM (
           (:entity = 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD','RECRUITER'))
           OR (:entity <> 'US' AND rl.name IN ('EMPLOYEE','TEAMLEAD'))
       )
+      AND :entity <> 'US'
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
       AND ud.designation != 'testuser'
