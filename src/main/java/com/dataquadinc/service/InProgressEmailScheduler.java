@@ -26,7 +26,7 @@ public class InProgressEmailScheduler {
 
             // FIX: get Map response instead of List
             Map<String, Object> response =
-                    requirementsService.getInProgressRequirements(today, today, 0, Integer.MAX_VALUE, null, "IN");
+                    requirementsService.getInProgressRequirements(today, today, 0, Integer.MAX_VALUE, null, "IN","ADRTIN%");
 
             // Extract actual list
             List<InProgressRequirementDTO> requirements =

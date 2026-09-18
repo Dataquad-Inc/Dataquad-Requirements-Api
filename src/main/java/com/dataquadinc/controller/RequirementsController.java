@@ -844,6 +844,7 @@ public class RequirementsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "IN") String entity,
+			@RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
@@ -852,9 +853,11 @@ public class RequirementsController {
             startDate = today;
             endDate = today;
         }
+		String userPrefix = "ADRTIN%";
+		if ("bangalore".equalsIgnoreCase(location)) { userPrefix = "ADRTBIN%"; }
 
         Map<String, Object> result =
-                service.getInProgressRequirements(startDate, endDate, page, size, search, entity);
+                service.getInProgressRequirements(startDate, endDate, page, size, search, entity,userPrefix);
 
         return ResponseEntity.ok(result);
     }
@@ -868,22 +871,26 @@ public class RequirementsController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "IN") String entity,
+			@RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+		String userPrefix = "ADRTIN%";
+		if ("bangalore".equalsIgnoreCase(location)) { userPrefix = "ADRTBIN%"; }
+
         if (startDate != null && endDate != null) {
-            logger.info("Fetching In Progress requirements from {} to {}", startDate, endDate);
+            logger.info("Fetching In Progress requirements from {} to {}", startDate, endDate,entity,location);
 
             return ResponseEntity.ok(
-                    service.getInProgressRequirements(startDate, endDate, page, size, search, entity)
+                    service.getInProgressRequirements(startDate, endDate, page, size, search, entity,userPrefix)
             );
 
         } else {
             LocalDate today = LocalDate.now();
-            logger.info("No date range provided. Fetching for today: {}", today);
+            logger.info("No date range provided. Fetching for today: {}", today,entity,location);
 
             return ResponseEntity.ok(
-                    service.getInProgressRequirements(today, today, page, size, search, entity)
+                    service.getInProgressRequirements(today, today, page, size, search, entity,userPrefix)
             );
         }
     }

@@ -1650,7 +1650,8 @@ public class RequirementsService {
             int page,
             int size,
             String search,
-            String entity) {
+            String entity,
+			String userPrefix) {
 
         boolean isToday = startDate.equals(endDate) && startDate.equals(LocalDate.now());
 
@@ -1658,7 +1659,7 @@ public class RequirementsService {
 
         Page<Object[]> pageResult =
                 requirementsDao.findInProgressRequirementsByDateRange(
-                        startDate, endDate, isToday, search, entity, pageable);
+                        startDate, endDate, isToday, search, entity,userPrefix, pageable);
 
         List<InProgressRequirementDTO> dtos = new ArrayList<>();
 
@@ -1779,7 +1780,7 @@ public class RequirementsService {
 
             if (requirements == null) {
                 Map<String, Object> response =
-                        getInProgressRequirements(today, today, 0, Integer.MAX_VALUE, null, "IN");
+                        getInProgressRequirements(today, today, 0, Integer.MAX_VALUE, null, "IN", "ADRTIN%");
 
                 requirements = (List<InProgressRequirementDTO>) response.get("content");
             }
