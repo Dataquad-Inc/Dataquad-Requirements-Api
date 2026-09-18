@@ -1609,6 +1609,7 @@ SELECT * FROM (
       AND :entity <> 'US'
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
+      AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
 
       AND NOT EXISTS (
@@ -1689,6 +1690,7 @@ SELECT * FROM (
       AND r.status IN ('In Progress', 'Submitted')
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
+    AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
@@ -1734,6 +1736,7 @@ SELECT COUNT(*) FROM (
       AND :entity <> 'US'
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
+      AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
 
       AND NOT EXISTS (
@@ -1769,6 +1772,7 @@ SELECT COUNT(*) FROM (
       AND r.status IN ('In Progress', 'Submitted')
       AND ud.status = 'ACTIVE'
       AND ud.entity = :entity
+      AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
@@ -1800,6 +1804,7 @@ SELECT COUNT(*) FROM (
             @Param("isToday") boolean isToday,
             @Param("search") String search,
             @Param("entity") String entity,
+            @Param("userPrefix") String userPrefix,
             Pageable pageable
     );
 
