@@ -1546,6 +1546,7 @@ public class RequirementsService {
 					dto.setNumberOfClients(convertToInt(tuple.get("numberOfClients")));
 					dto.setNumberOfRequirements(convertToInt(tuple.get("numberOfRequirements")));
 					dto.setNumberOfSubmissions(convertToInt(tuple.get("numberOfSubmissions")));
+					dto.setNumberOfScreenRejects(convertToInt(tuple.get("numberOfScreenRejects")));
 					dto.setNumberOfInterviews(convertToInt(tuple.get("numberOfInterviews")));
 					dto.setNumberOfPlacements(convertToInt(tuple.get("numberOfPlacements")));
 
@@ -1568,6 +1569,7 @@ public class RequirementsService {
 					dto.setSelfSubmissions(convertToInt(tuple.get("selfSubmissions")));
 					dto.setSelfInterviews(convertToInt(tuple.get("selfInterviews")));
 					dto.setSelfPlacements(convertToInt(tuple.get("selfPlacements")));
+					dto.setTeamScreenRejectCount(convertToInt(tuple.get("teamScreenRejectCount")));
 					dto.setTeamSubmissions(convertToInt(tuple.get("teamSubmissions")));
 					dto.setTeamInterviews(convertToInt(tuple.get("teamInterviews")));
 					dto.setTeamPlacements(convertToInt(tuple.get("teamPlacements")));

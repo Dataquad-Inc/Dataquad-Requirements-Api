@@ -34,6 +34,7 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         JOIN user_roles ur ON ur.user_id = u.user_id
         JOIN roles r ON ur.role_id = r.id
         WHERE r.name = 'BDM' and u.status = 'ACTIVE' and u.designation <> 'testuser'
+          AND UPPER(COALESCE(u.entity,'')) = 'IN'
     """, nativeQuery = true)
     List<BdmEmployeeProjection> findAllBdmEmployees();
 
