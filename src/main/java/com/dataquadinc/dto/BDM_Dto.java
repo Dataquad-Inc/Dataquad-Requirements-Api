@@ -16,6 +16,7 @@ public class BDM_Dto {
     private String clientAddress;
     private String positionType;
     private int netPayment;
+    private String invoice;
     private double gst;
     private List<String> supportingCustomers;
     @Pattern(regexp = "^(https?:\\/\\/)?([\\w.-]+)+(:\\d+)?(\\/.*)?$",
@@ -205,6 +206,6 @@ public class BDM_Dto {
 
     public void setLocation(String location) { this.location = location;}
 
-
-
+    public String getInvoice() { return invoice;}
+    public void setInvoice(String invoice) { this.invoice = invoice; }
 }

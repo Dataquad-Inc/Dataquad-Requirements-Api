@@ -53,6 +53,9 @@ public class BDM_Client {
     @Column
     private String status;
 
+    @Column(name = "invoice", length = 10)
+    private String invoice;
+
     @Transient
     private int numberOfRequirements; // 👈 won't be persisted
 

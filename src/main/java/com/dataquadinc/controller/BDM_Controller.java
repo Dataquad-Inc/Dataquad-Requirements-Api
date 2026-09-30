@@ -317,5 +317,20 @@ public class BDM_Controller {
         return new ResponseEntity<>(requirements, HttpStatus.OK);
     }
 
+    @GetMapping("/bdm/invoice/yes")
+    public ResponseEntity<ResponseBean> getClientsWithInvoice() {
+
+        try {
+            List<BDM_Dto> clients = service.getClientsWithInvoice();
+            return ResponseEntity.ok( ResponseBean.successResponse(
+                            "Clients with invoice details fetched successfully",
+                            clients));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseBean.errorResponse("Unexpected Error", "Something went wrong: " + e.getMessage()));
+        }
+    }
+
 
 }
