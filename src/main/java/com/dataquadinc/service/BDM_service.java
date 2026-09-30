@@ -100,6 +100,7 @@ public class BDM_service {
         dto.setPositionType(client.getPositionType());
         dto.setStatus(client.getStatus());
         dto.setFeedBack(client.getFeedBack());
+        dto.setInvoice(client.getInvoice());
         return dto;
     }
 
@@ -289,6 +290,7 @@ public class BDM_service {
             if (dto.getSupportingCustomers() != null)
                 existingClient.setSupportingCustomers(dto.getSupportingCustomers());
             if (dto.getFeedBack() != null) existingClient.setFeedBack(dto.getFeedBack());
+            if (dto.getInvoice() != null) {existingClient.setInvoice(dto.getInvoice());}
             // 🔁 File uploads
             try {
                 if (files != null && !files.isEmpty()) {
@@ -1007,6 +1009,11 @@ public class BDM_service {
                 resultList.size(), userId, startDate, endDate);
 
         return resultList;
+    }
+
+    public List<BDM_Dto> getClientsWithInvoice() {
+        List<BDM_Client> clients = repository.findByInvoiceIgnoreCase("yes");
+        return clients.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
 }
