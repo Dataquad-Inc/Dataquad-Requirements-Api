@@ -124,6 +124,7 @@ public class BDM_service {
         client.setOnBoardedBy(dto.getOnBoardedBy());
         client.setPositionType(dto.getPositionType());
         client.setFeedBack(dto.getFeedBack());
+        client.setInvoice(dto.getInvoice());
         return client;
     }
 
