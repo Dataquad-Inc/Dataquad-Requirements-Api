@@ -83,24 +83,26 @@ public class BDM_service {
         BDM_Dto dto = new BDM_Dto();
         dto.setId(client.getId());
         dto.setClientName(client.getClientName());
-        dto.setClientAddress(client.getClientAddress());
+        dto.setVendorId(client.getVendorId());
+        dto.setVendorName(client.getVendorName());
+        dto.setVendorAddress(client.getVendorAddress());
+        dto.setVendorWebsiteUrl(client.getVendorWebsiteUrl());
+        dto.setVendorLinkedInUrl(client.getVendorLinkedInUrl());
         dto.setLocation(client.getLocation());
         dto.setNetPayment(client.getNetPayment());
         dto.setGst(client.getGst());
+        dto.setPositionType(client.getPositionType());
+        dto.setInvoice(client.getInvoice());
         dto.setSupportingCustomers(client.getSupportingCustomers());
-        dto.setClientWebsiteUrl(client.getClientWebsiteUrl());
-        dto.setClientLinkedInUrl(client.getClientLinkedInUrl());
         dto.setClientSpocName(client.getClientSpocName());
         dto.setClientSpocEmailid(client.getClientSpocEmailid());
-        dto.setDocumentData(client.getDocumentedData());
-        dto.setSupportingDocuments(client.getSupportingDocuments());  // List<byte[]>
         dto.setClientSpocLinkedin(client.getClientSpocLinkedin());
         dto.setClientSpocMobileNumber(client.getClientSpocMobileNumber());
+        dto.setDocumentData(client.getDocumentedData());
+        dto.setSupportingDocuments(client.getSupportingDocuments());
         dto.setOnBoardedBy(client.getOnBoardedBy());
-        dto.setPositionType(client.getPositionType());
         dto.setStatus(client.getStatus());
         dto.setFeedBack(client.getFeedBack());
-        dto.setInvoice(client.getInvoice());
         return dto;
     }
 
@@ -108,21 +110,22 @@ public class BDM_service {
         BDM_Client client = new BDM_Client();
         client.setId(dto.getId());
         client.setClientName(dto.getClientName());
-        client.setClientAddress(dto.getClientAddress());
+        client.setVendorId(dto.getVendorId());
+        client.setVendorName(dto.getVendorName());
+        client.setVendorAddress(dto.getVendorAddress());
+        client.setVendorWebsiteUrl(dto.getVendorWebsiteUrl());
+        client.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
         client.setLocation(dto.getLocation());
         client.setNetPayment(dto.getNetPayment());
         client.setGst(dto.getGst());
-        client.setSupportingCustomers(dto.getSupportingCustomers());
-        client.setClientWebsiteUrl(dto.getClientWebsiteUrl());
-        client.setClientLinkedInUrl(dto.getClientLinkedInUrl());
+        client.setPositionType(dto.getPositionType());
         client.setClientSpocName(dto.getClientSpocName());
         client.setClientSpocEmailid(dto.getClientSpocEmailid());
-        client.setDocumentedData(dto.getDocumentData());
-        client.setSupportingDocuments(dto.getSupportingDocuments());  // List<byte[]>
         client.setClientSpocLinkedin(dto.getClientSpocLinkedin());
         client.setClientSpocMobileNumber(dto.getClientSpocMobileNumber());
+        client.setDocumentedData(dto.getDocumentData());
+        client.setSupportingDocuments(dto.getSupportingDocuments());
         client.setOnBoardedBy(dto.getOnBoardedBy());
-        client.setPositionType(dto.getPositionType());
         client.setFeedBack(dto.getFeedBack());
         client.setInvoice(dto.getInvoice());
         return client;
@@ -135,19 +138,39 @@ public class BDM_service {
         }
 
         BDM_Client entity = convertToEntity(dto);
-        entity.setId(generateCustomId()); // Generate custom ID
-
-        // ✅ Set assignedBy logic
+        entity.setId(generateCustomId());
+        entity.setVendorId(generateVendorId());
+        entity.setVendorName(dto.getVendorName());
+        entity.setVendorAddress(dto.getVendorAddress());
+        entity.setVendorWebsiteUrl(dto.getVendorWebsiteUrl());
+        entity.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
         String createdBy = dto.getOnBoardedBy();
         String assignedTo = dto.getAssignedTo();
-
         if (assignedTo != null && !assignedTo.isBlank()) {
-            entity.setOnBoardedBy(assignedTo);  // assigned to someone selected
+            entity.setOnBoardedBy(assignedTo);
         } else {
-            entity.setOnBoardedBy(createdBy);   // assigned to creator
+            entity.setOnBoardedBy(createdBy);
         }
 
-        // ✅ File upload
+        if (dto.getSupportingCustomers() != null
+                && !dto.getSupportingCustomers().isEmpty()) {
+
+            entity.setSupportingCustomers(dto.getSupportingCustomers());
+
+            // Extract net pay values into the new netpay JSON column
+            List<Integer> netPays = dto.getSupportingCustomers()
+                    .stream()
+                    .map(SupportingCustomerDto::getNetPay)
+                    .collect(Collectors.toList());
+
+            entity.setNetpay(netPays);
+
+        } else {
+            // Store empty JSON array instead of null
+            entity.setSupportingCustomers(new ArrayList<>());
+            entity.setNetpay(new ArrayList<>());
+        }
+
         Path uploadDir = Paths.get("uploads");
         if (!Files.exists(uploadDir)) {
             Files.createDirectories(uploadDir);
@@ -167,12 +190,20 @@ public class BDM_service {
             }
         }
 
-        entity.setSupportingDocuments(fileNames);  // ✅ Store file names in DB
+        entity.setSupportingDocuments(fileNames);
+        entity = repo.save(entity);
 
-        entity = repo.save(entity); // Save client in DB
         return convertToDTO(entity);
     }
 
+    private String generateVendorId() {
+
+        List<String> vendorIds = repo.findVendorIds(PageRequest.of(0, 1));
+        if (vendorIds.isEmpty()) {return "VENDOR01";}
+        String lastVendorId = vendorIds.get(0);
+        int lastNumber = Integer.parseInt(lastVendorId.substring("VENDOR".length()));
+        return "VENDOR" + String.format("%02d", lastNumber + 1);
+    }
     public List<BDM_Dto> getAllClients() {
 
         // 2. Fetch clients created in the current month
@@ -262,37 +293,104 @@ public class BDM_service {
         return repository.findById(id).map(this::convertToDTO);
     }
 
-    public Optional<BDM_Dto> updateClient(String id, BDM_Dto dto, List<MultipartFile> files) {
+    public Optional<BDM_Dto> updateClient(
+            String id,
+            BDM_Dto dto,
+            List<MultipartFile> files) {
+
         return repository.findById(id).map(existingClient -> {
 
-            // 🔁 Assignment logic
-            String createdBy = dto.getOnBoardedBy();   // Person updating
-            String assignedTo = dto.getAssignedTo();   // Optional person reassigned to
+            String createdBy = dto.getOnBoardedBy();
+            String assignedTo = dto.getAssignedTo();
 
             if (assignedTo != null && !assignedTo.isBlank()) {
-                existingClient.setOnBoardedBy(assignedTo);  // Set to assigned person
+                existingClient.setOnBoardedBy(assignedTo);
             } else if (createdBy != null && !createdBy.isBlank()) {
-                existingClient.setOnBoardedBy(createdBy);   // Set to updater if not reassigned
+                existingClient.setOnBoardedBy(createdBy);
             }
 
-            // 🔁 Update only non-null fields
-            if (dto.getClientName() != null) existingClient.setClientName(dto.getClientName());
-            if (dto.getClientAddress() != null) existingClient.setClientAddress(dto.getClientAddress());
-            if (dto.getNetPayment() != 0) existingClient.setNetPayment(dto.getNetPayment());
-            if (dto.getGst() != 0.0) existingClient.setGst(dto.getGst());
-            if (dto.getClientWebsiteUrl() != null) existingClient.setClientWebsiteUrl(dto.getClientWebsiteUrl());
-            if (dto.getClientLinkedInUrl() != null) existingClient.setClientLinkedInUrl(dto.getClientLinkedInUrl());
-            if (dto.getClientSpocName() != null) existingClient.setClientSpocName(dto.getClientSpocName());
-            if (dto.getClientSpocEmailid() != null) existingClient.setClientSpocEmailid(dto.getClientSpocEmailid());
-            if (dto.getClientSpocLinkedin() != null) existingClient.setClientSpocLinkedin(dto.getClientSpocLinkedin());
-            if (dto.getClientSpocMobileNumber() != null)
-                existingClient.setClientSpocMobileNumber(dto.getClientSpocMobileNumber());
-            if (dto.getPositionType() != null) existingClient.setPositionType(dto.getPositionType());
-            if (dto.getSupportingCustomers() != null)
-                existingClient.setSupportingCustomers(dto.getSupportingCustomers());
-            if (dto.getFeedBack() != null) existingClient.setFeedBack(dto.getFeedBack());
-            if (dto.getInvoice() != null) {existingClient.setInvoice(dto.getInvoice());}
-            // 🔁 File uploads
+            if (dto.getClientName() != null) {
+                existingClient.setClientName(dto.getClientName());
+            }
+
+            if (dto.getNetPayment() != 0) {
+                existingClient.setNetPayment(dto.getNetPayment());
+            }
+
+            if (dto.getGst() != 0.0) {
+                existingClient.setGst(dto.getGst());
+            }
+
+            if (dto.getPositionType() != null) {
+                existingClient.setPositionType(dto.getPositionType());
+            }
+
+            if (dto.getLocation() != null) {
+                existingClient.setLocation(dto.getLocation());
+            }
+
+            if (dto.getVendorName() != null) {
+                existingClient.setVendorName(dto.getVendorName());
+            }
+
+            if (dto.getVendorAddress() != null) {
+                existingClient.setVendorAddress(dto.getVendorAddress());
+            }
+
+            if (dto.getVendorWebsiteUrl() != null) {
+                existingClient.setVendorWebsiteUrl(dto.getVendorWebsiteUrl());
+            }
+
+            if (dto.getVendorLinkedInUrl() != null) {
+                existingClient.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
+            }
+
+            if (dto.getSupportingCustomers() != null) {
+
+                existingClient.setSupportingCustomers(
+                        dto.getSupportingCustomers()
+                );
+
+                // Extract netPay from each supporting customer
+                List<Integer> netPays = dto.getSupportingCustomers()
+                        .stream()
+                        .map(SupportingCustomerDto::getNetPay)
+                        .collect(Collectors.toList());
+
+                existingClient.setNetpay(netPays);
+            }
+            if (dto.getClientSpocName() != null) {
+                existingClient.setClientSpocName(
+                        dto.getClientSpocName()
+                );
+            }
+
+            if (dto.getClientSpocEmailid() != null) {
+                existingClient.setClientSpocEmailid(
+                        dto.getClientSpocEmailid()
+                );
+            }
+
+            if (dto.getClientSpocLinkedin() != null) {
+                existingClient.setClientSpocLinkedin(
+                        dto.getClientSpocLinkedin()
+                );
+            }
+
+            if (dto.getClientSpocMobileNumber() != null) {
+                existingClient.setClientSpocMobileNumber(
+                        dto.getClientSpocMobileNumber()
+                );
+            }
+
+            if (dto.getFeedBack() != null) {
+                existingClient.setFeedBack(dto.getFeedBack());
+            }
+
+            if (dto.getInvoice() != null) {
+                existingClient.setInvoice(dto.getInvoice());
+            }
+
             try {
                 if (files != null && !files.isEmpty()) {
                     Path uploadDir = Paths.get("uploads");
@@ -300,7 +398,10 @@ public class BDM_service {
                         Files.createDirectories(uploadDir);
                     }
 
-                    List<String> fileNames = new ArrayList<>(existingClient.getSupportingDocuments());
+                    List<String> fileNames = existingClient.getSupportingDocuments() != null
+                                    ? new ArrayList<>(
+                                    existingClient.getSupportingDocuments())
+                                    : new ArrayList<>();
 
                     for (MultipartFile file : files) {
                         if (!file.isEmpty()) {
@@ -313,14 +414,13 @@ public class BDM_service {
                     }
                     existingClient.setSupportingDocuments(fileNames);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();  // Optionally convert to RuntimeException if needed
-            }
 
-            return convertToDTO(repository.save(existingClient));
+            } catch (IOException e) {e.printStackTrace();}
+            BDM_Client savedClient = repository.save(existingClient);
+
+            return convertToDTO(savedClient);
         });
     }
-
 
     // ✅ 1. Method with startDate and endDate passed
     public List<BdmEmployeeDTO> getAllBdmEmployeesDateFilter(LocalDate startDate, LocalDate endDate) {

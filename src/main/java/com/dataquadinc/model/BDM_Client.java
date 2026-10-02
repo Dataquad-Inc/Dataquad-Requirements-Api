@@ -1,6 +1,12 @@
 package com.dataquadinc.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,21 +25,42 @@ import java.util.UUID;
 public class BDM_Client {
 
     @Id
-    private String id;  // Custom-generated ID
+    private String id;  // Existing Client ID
+
     @Column(unique = true, nullable = false)
     private String clientName;
+
+    @Column(name = "vendor_id")
+    private String vendorId;
+
+    @Column(name = "vendor_name")
+    private String vendorName;
+
+    @Column(name = "vendor_address")
+    private String vendorAddress;
+
+    @Column(name = "vendor_website_url")
+    private String vendorWebsiteUrl;
+
+    @Column(name = "vendor_linked_in_url", length = 1000)
+    private String vendorLinkedInUrl;
+
     private String onBoardedBy;
-    private String clientAddress;
+
     private String positionType;
+
     private int netPayment;
+
     private double gst;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<String> supportingCustomers;
 
-    private String clientWebsiteUrl;
-    @Column(length = 1000)
-    private String clientLinkedInUrl;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<com.dataquadinc.dto.SupportingCustomerDto> supportingCustomers;
+
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "netpay")
+    private List<Integer> netpay;
 
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> clientSpocName;
@@ -50,34 +77,40 @@ public class BDM_Client {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> supportingDocuments;
 
+    @Lob
+    @Column(columnDefinition = "LONGBLOB")
+    private byte[] documentedData;
+
     @Column
     private String status;
 
     @Column(name = "invoice", length = 10)
     private String invoice;
 
-    @Transient
-    private int numberOfRequirements; // 👈 won't be persisted
-
-
-    @Lob
-    @Column(columnDefinition = "LONGBLOB")
-    private byte[] documentedData;  // Stores actual file content
-
     @Column(length = 100)
     private String location;
 
-    @PrePersist
-    public void prePersist() {
-        if (this.id == null || this.id.isEmpty()) {
-            this.id = "BDM" + UUID.randomUUID().toString().substring(0, 8);  // Generate Unique ID
-        }
-    }
+    private String feedBack;
+
+
+    @Transient
+    private int numberOfRequirements;
+
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    private String feedBack;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.id == null || this.id.isEmpty()) {
+            this.id = "BDM"
+                    + UUID.randomUUID()
+                    .toString()
+                    .substring(0, 8);
+        }
+    }
 
     public int getNumberOfRequirements() {
         return numberOfRequirements;
@@ -111,6 +144,22 @@ public class BDM_Client {
         this.clientName = clientName;
     }
 
+    public String getVendorId() {
+        return vendorId;
+    }
+
+    public void setVendorId(String vendorId) {
+        this.vendorId = vendorId;
+    }
+
+    public String getVendorName() {
+        return vendorName;
+    }
+
+    public void setVendorName(String vendorName) {
+        this.vendorName = vendorName;
+    }
+
     public String getOnBoardedBy() {
         return onBoardedBy;
     }
@@ -119,12 +168,10 @@ public class BDM_Client {
         this.onBoardedBy = onBoardedBy;
     }
 
-    public String getClientAddress() {
-        return clientAddress;
-    }
+    public String getVendorAddress() {return vendorAddress;}
 
-    public void setClientAddress(String clientAddress) {
-        this.clientAddress = clientAddress;
+    public void setVendorAddress(String vendorAddress) {
+        this.vendorAddress = vendorAddress;
     }
 
     public String getPositionType() {
@@ -151,28 +198,38 @@ public class BDM_Client {
         this.gst = gst;
     }
 
-    public List<String> getSupportingCustomers() {
+    public List<com.dataquadinc.dto.SupportingCustomerDto> getSupportingCustomers() {
         return supportingCustomers;
     }
 
-    public void setSupportingCustomers(List<String> supportingCustomers) {
+    public void setSupportingCustomers(
+            List<com.dataquadinc.dto.SupportingCustomerDto> supportingCustomers) {
+
         this.supportingCustomers = supportingCustomers;
     }
 
-    public String getClientWebsiteUrl() {
-        return clientWebsiteUrl;
+    public List<Integer> getNetpay() {
+        return netpay;
     }
 
-    public void setClientWebsiteUrl(String clientWebsiteUrl) {
-        this.clientWebsiteUrl = clientWebsiteUrl;
+    public void setNetpay(List<Integer> netpay) {
+        this.netpay = netpay;
     }
 
-    public String getClientLinkedInUrl() {
-        return clientLinkedInUrl;
+    public String getVendorWebsiteUrl() {
+        return vendorWebsiteUrl;
     }
 
-    public void setClientLinkedInUrl(String clientLinkedInUrl) {
-        this.clientLinkedInUrl = clientLinkedInUrl;
+    public void setVendorWebsiteUrl(String vendorWebsiteUrl) {
+        this.vendorWebsiteUrl = vendorWebsiteUrl;
+    }
+
+    public String getVendorLinkedInUrl() {
+        return vendorLinkedInUrl;
+    }
+
+    public void setVendorLinkedInUrl(String vendorLinkedInUrl) {
+        this.vendorLinkedInUrl = vendorLinkedInUrl;
     }
 
     public List<String> getClientSpocName() {
@@ -239,7 +296,19 @@ public class BDM_Client {
         this.status = status;
     }
 
-    public String getLocation() { return location; }
+    public String getLocation() {
+        return location;
+    }
 
-    public void setLocation(String location) { this.location = location; }
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getInvoice() {
+        return invoice;
+    }
+
+    public void setInvoice(String invoice) {
+        this.invoice = invoice;
+    }
 }
