@@ -40,6 +40,23 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     """, nativeQuery = true)
     List<BdmEmployeeProjection> findAllBdmEmployees();
 
+    @Query("""
+    SELECT MAX(
+        CAST(SUBSTRING(b.vendorId, 7) AS integer)
+    )
+    FROM BDM_Client b
+    WHERE b.vendorId LIKE 'VENDOR%'
+""")
+    Integer findMaxVendorNumber();
+
+    @Query("""
+       SELECT b.vendorId
+       FROM BDM_Client b
+       WHERE b.vendorId IS NOT NULL
+       ORDER BY b.vendorId DESC
+       """)
+    List<String> findVendorIds(Pageable pageable);
+
 
     @Query("SELECT c.clientName FROM BDM_Client c WHERE c.clientName = :clientName")
     List<String> findByClientName(String clientName);
