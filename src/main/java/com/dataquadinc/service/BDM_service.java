@@ -197,12 +197,11 @@ public class BDM_service {
     }
 
     private String generateVendorId() {
-
-        List<String> vendorIds = repo.findVendorIds(PageRequest.of(0, 1));
-        if (vendorIds.isEmpty()) {return "VENDOR01";}
-        String lastVendorId = vendorIds.get(0);
-        int lastNumber = Integer.parseInt(lastVendorId.substring("VENDOR".length()));
-        return "VENDOR" + String.format("%02d", lastNumber + 1);
+        Integer maxVendorNumber = repo.findMaxVendorNumber();
+        if (maxVendorNumber == null) {
+            return "VENDOR01";
+        }
+        return "VENDOR" + String.format("%02d", maxVendorNumber + 1);
     }
     public List<BDM_Dto> getAllClients() {
 
