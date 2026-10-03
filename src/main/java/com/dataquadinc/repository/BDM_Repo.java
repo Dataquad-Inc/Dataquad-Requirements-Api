@@ -227,18 +227,8 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
             @Param("endDate") LocalDate endDate
     );
 
-    @Query(value = """
-    SELECT 
-        b.id,
-        b.client_name,
-        b.on_boarded_by,
-        b.client_website_url,
-        b.client_linked_in_url,
-        b.client_address,
-        b.location
-    FROM bdm_client b
-""", nativeQuery = true)
-    List<Object[]> findOverallClients();
+    @Query("SELECT b FROM BDM_Client b")
+    List<BDM_Client> findOverallClients();
 
     @Query(value = """
     SELECT COUNT(*) 

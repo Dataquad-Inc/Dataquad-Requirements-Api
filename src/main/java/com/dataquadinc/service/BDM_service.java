@@ -225,20 +225,41 @@ public class BDM_service {
     //@Override
     public List<Map<String, Object>> getOverallClients() {
 
-        List<Object[]> results = repository.findOverallClients();
+        List<BDM_Client> clients = repository.findOverallClients();
 
         List<Map<String, Object>> response = new ArrayList<>();
 
-        for (Object[] obj : results) {
-            Map<String, Object> map = new HashMap<>();
+        for (BDM_Client client : clients) {
 
-            map.put("clientId", obj[0]);
-            map.put("clientName", obj[1]);
-            map.put("bdmName", obj[2]);
-            map.put("clientWebsiteUrl", obj[3]);
-            map.put("clientLinkedInUrl", obj[4]);
-            map.put("clientAddress", obj[5]);
-            map.put("location", obj[6] != null ? obj[6] : "Not Available");
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            BDM_Dto dto = convertToDTO(client);
+
+            map.put("id", dto.getId());
+            map.put("clientName", dto.getClientName());
+            map.put("vendorId", dto.getVendorId());
+            map.put("vendorName", dto.getVendorName());
+            map.put("vendorAddress", dto.getVendorAddress());
+            map.put("positionType", dto.getPositionType());
+            map.put("vendorWebsiteUrl", dto.getVendorWebsiteUrl());
+            map.put("vendorLinkedInUrl", dto.getVendorLinkedInUrl());
+            map.put("netPayment", dto.getNetPayment());
+            map.put("gst", dto.getGst());
+            map.put("invoice", dto.getInvoice());
+            map.put("supportingCustomers", dto.getSupportingCustomers());
+            map.put("clientSpocName", dto.getClientSpocName());
+            map.put("clientSpocEmailid", dto.getClientSpocEmailid());
+            map.put("clientSpocLinkedin", dto.getClientSpocLinkedin());
+            map.put("clientSpocMobileNumber", dto.getClientSpocMobileNumber());
+            map.put("supportingDocuments", dto.getSupportingDocuments());
+            map.put("onBoardedBy", dto.getOnBoardedBy());
+            map.put("assignedTo", dto.getAssignedTo());
+            map.put("status", dto.getStatus());
+            map.put("feedBack", dto.getFeedBack());
+            map.put("numberOfRequirements",
+                    repository.countRequirementsByClientName(client.getClientName()));
+            map.put("location",
+                    dto.getLocation() != null ? dto.getLocation() : "Not Available");
 
             response.add(map);
         }
@@ -320,7 +341,7 @@ public class BDM_service {
                 existingClient.setNetPayment(dto.getNetPayment());
             }
 
-            if (dto.getGst() != 0.0) {
+            if (dto.getGst() != null) {
                 existingClient.setGst(dto.getGst());
             }
 

@@ -49,7 +49,7 @@ public class BDM_Dto {
 
     private int netPayment;
 
-    private double gst;
+    private String gst;
 
     private String invoice;
 
@@ -180,11 +180,11 @@ public class BDM_Dto {
         this.netPayment = netPayment;
     }
 
-    public double getGst() {
+    public String getGst() {
         return gst;
     }
 
-    public void setGst(double gst) {
+    public void setGst(String gst) {
         this.gst = gst;
     }
 
