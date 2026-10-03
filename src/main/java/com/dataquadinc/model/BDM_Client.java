@@ -51,7 +51,7 @@ public class BDM_Client {
 
     private int netPayment;
 
-    private double gst;
+    private String gst;
 
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -190,11 +190,11 @@ public class BDM_Client {
         this.netPayment = netPayment;
     }
 
-    public double getGst() {
+    public String getGst() {
         return gst;
     }
 
-    public void setGst(double gst) {
+    public void setGst(String gst) {
         this.gst = gst;
     }
 
