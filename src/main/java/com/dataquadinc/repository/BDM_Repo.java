@@ -26,6 +26,8 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
 
     boolean existsByClientNameIgnoreCase(String clientName);
 
+    Optional<BDM_Client> findByVendorId(String vendorId);
+
     @Query(value = """
         SELECT u.user_id AS userId,
                u.user_name AS userName,

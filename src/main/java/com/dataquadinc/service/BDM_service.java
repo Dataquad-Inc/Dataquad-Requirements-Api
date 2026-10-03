@@ -297,7 +297,11 @@ public class BDM_service {
             BDM_Dto dto,
             List<MultipartFile> files) {
 
-        return repository.findById(id).map(existingClient -> {
+        Optional<BDM_Client> clientOptional = repository.findById(id);
+        if (clientOptional.isEmpty()) {
+            clientOptional = repository.findByVendorId(id);
+        }
+        return clientOptional.map(existingClient -> {
 
             String createdBy = dto.getOnBoardedBy();
             String assignedTo = dto.getAssignedTo();
