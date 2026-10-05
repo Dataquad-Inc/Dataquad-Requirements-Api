@@ -332,5 +332,31 @@ public class BDM_Controller {
         }
     }
 
+    @GetMapping("/bdm/invoice/yes/vendors")
+    public ResponseEntity<ResponseBean> getInvoiceVendorsWithClients() {
+
+        try {
+
+            List<VendorClientsDto> vendors = service.getInvoiceVendorsWithClients();
+
+            return ResponseEntity.ok(ResponseBean.successResponse(
+                            "Invoice vendors with clients fetched successfully",
+                            vendors
+                    )
+            );
+
+        } catch (Exception e) {
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            ResponseBean.errorResponse(
+                                    "Unexpected Error",
+                                    "Something went wrong: " + e.getMessage()
+                            )
+                    );
+        }
+    }
+
+
 
 }
