@@ -146,6 +146,7 @@ public class BDM_service {
         entity.setVendorAddress(dto.getVendorAddress());
         entity.setVendorWebsiteUrl(dto.getVendorWebsiteUrl());
         entity.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
+        entity.setCurrency(dto.getCurrency());
         String createdBy = dto.getOnBoardedBy();
         String assignedTo = dto.getAssignedTo();
         if (assignedTo != null && !assignedTo.isBlank()) {
@@ -349,6 +350,9 @@ public class BDM_service {
 
             if (dto.getPositionType() != null) {
                 existingClient.setPositionType(dto.getPositionType());
+            }
+            if (dto.getCurrency() != null) {
+                existingClient.setCurrency(dto.getCurrency());
             }
 
             if (dto.getLocation() != null) {
