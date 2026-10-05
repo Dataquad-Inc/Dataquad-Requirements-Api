@@ -103,6 +103,7 @@ public class BDM_service {
         dto.setOnBoardedBy(client.getOnBoardedBy());
         dto.setStatus(client.getStatus());
         dto.setFeedBack(client.getFeedBack());
+        dto.setCurrency(client.getCurrency());
         return dto;
     }
 
@@ -128,6 +129,7 @@ public class BDM_service {
         client.setOnBoardedBy(dto.getOnBoardedBy());
         client.setFeedBack(dto.getFeedBack());
         client.setInvoice(dto.getInvoice());
+        client.setCurrency(dto.getCurrency());
         return client;
     }
 

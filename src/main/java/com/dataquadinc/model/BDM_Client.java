@@ -53,6 +53,8 @@ public class BDM_Client {
 
     private String gst;
 
+    private String currency;
+
 
     @JdbcTypeCode(SqlTypes.JSON)
     private List<com.dataquadinc.dto.SupportingCustomerDto> supportingCustomers;
@@ -302,6 +304,14 @@ public class BDM_Client {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 
     public String getInvoice() {

@@ -30,6 +30,8 @@ public class BDM_Dto {
 
     private String positionType;
 
+    private String currency;
+
 
     @Pattern(
             regexp = "^(https?:\\/\\/)?([\\w.-]+)+(:\\d+)?(\\/.*)?$",
@@ -289,4 +291,8 @@ public class BDM_Dto {
     public void setDocumentData(byte[] documentData) {
         this.documentData = documentData;
     }
+
+    public String getCurrency() { return currency; }
+
+    public void setCurrency(String currency) { this.currency = currency; }
 }
