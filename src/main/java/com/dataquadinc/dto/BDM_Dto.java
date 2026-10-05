@@ -89,6 +89,8 @@ public class BDM_Dto {
 
     private String location;
 
+    private String accountManager;
+
 
     @JsonIgnore
     private byte[] documentData;
@@ -295,4 +297,8 @@ public class BDM_Dto {
     public String getCurrency() { return currency; }
 
     public void setCurrency(String currency) { this.currency = currency; }
+
+    public String getAccountManager() {return accountManager;}
+
+    public void setAccountManager(String accountManager) {this.accountManager = accountManager;}
 }

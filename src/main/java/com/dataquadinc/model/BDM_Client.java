@@ -55,6 +55,8 @@ public class BDM_Client {
 
     private String currency;
 
+    private String accountManager;
+
 
     @JdbcTypeCode(SqlTypes.JSON)
     private List<com.dataquadinc.dto.SupportingCustomerDto> supportingCustomers;
@@ -321,4 +323,8 @@ public class BDM_Client {
     public void setInvoice(String invoice) {
         this.invoice = invoice;
     }
+
+    public String get() {return accountManager;}
+
+    public void setAccountManager(String accountManager) {this.accountManager = accountManager;}
 }

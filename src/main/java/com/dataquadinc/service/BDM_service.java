@@ -104,6 +104,7 @@ public class BDM_service {
         dto.setStatus(client.getStatus());
         dto.setFeedBack(client.getFeedBack());
         dto.setCurrency(client.getCurrency());
+        dto.setAccountManager(client.getAccountManager());
         return dto;
     }
 
@@ -130,6 +131,7 @@ public class BDM_service {
         client.setFeedBack(dto.getFeedBack());
         client.setInvoice(dto.getInvoice());
         client.setCurrency(dto.getCurrency());
+        client.setAccountManager(dto.getAccountManager());
         return client;
     }
 
@@ -147,6 +149,7 @@ public class BDM_service {
         entity.setVendorWebsiteUrl(dto.getVendorWebsiteUrl());
         entity.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
         entity.setCurrency(dto.getCurrency());
+        entity.setAccountManager(dto.getAccountManager());
         String createdBy = dto.getOnBoardedBy();
         String assignedTo = dto.getAssignedTo();
         if (assignedTo != null && !assignedTo.isBlank()) {
@@ -353,6 +356,10 @@ public class BDM_service {
             }
             if (dto.getCurrency() != null) {
                 existingClient.setCurrency(dto.getCurrency());
+            }
+
+            if (dto.getAccountManager() != null) {
+                existingClient.setAccountManager(dto.getAccountManager());
             }
 
             if (dto.getLocation() != null) {
@@ -1145,6 +1152,54 @@ public class BDM_service {
     public List<BDM_Dto> getClientsWithInvoice() {
         List<BDM_Client> clients = repository.findByInvoiceIgnoreCase("yes");
         return clients.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<VendorClientsDto> getInvoiceVendorsWithClients() {
+
+        // Get ONLY invoice = Yes records
+        List<BDM_Client> clients = repository.findByInvoiceIgnoreCase("yes");
+
+        Map<String, VendorClientsDto> vendorMap = new LinkedHashMap<>();
+        for (BDM_Client client : clients) {
+            String vendorId = client.getVendorId();
+            String vendorName = client.getVendorName();
+            if (vendorId == null || vendorId.trim().isEmpty()) {
+                continue;
+            }
+            // Create vendor only once
+            VendorClientsDto vendor = vendorMap.computeIfAbsent(vendorId, key -> {
+                        VendorClientsDto dto = new VendorClientsDto();
+                        dto.setVendorId(vendorId);
+                        dto.setVendorName(vendorName);
+                        dto.setClients(new ArrayList<>());
+                        return dto;
+                    });
+            // Add main clientName
+            if (client.getClientName() != null
+                    && !client.getClientName().trim().isEmpty()) {
+                if (!vendor.getClients()
+                        .contains(client.getClientName())) {
+
+                    vendor.getClients()
+                            .add(client.getClientName());
+                }
+            }
+            // Add supporting customer client names
+            if (client.getSupportingCustomers() != null) {
+
+                for (SupportingCustomerDto supportingCustomer : client.getSupportingCustomers()) {
+                    if (supportingCustomer.getClientName() != null
+                            && !supportingCustomer.getClientName()
+                            .trim().isEmpty()) {
+                        if (!vendor.getClients()
+                                .contains(supportingCustomer.getClientName())) {
+                            vendor.getClients().add(supportingCustomer.getClientName());
+                        }
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(vendorMap.values());
     }
 
 }
