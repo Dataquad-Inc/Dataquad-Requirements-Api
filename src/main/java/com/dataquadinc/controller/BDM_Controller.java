@@ -158,10 +158,15 @@ public class BDM_Controller {
     }
 
 
-    @DeleteMapping("/bdm/delete/{id}")
-    public ResponseEntity<ResponseBean> deleteClient(@PathVariable String id) {
-        service.deleteClient(id);
-        return ResponseEntity.ok(ResponseBean.successResponse("Client deleted successfully", null));
+    @DeleteMapping("/bdm/delete/{vendorId}")
+    public ResponseEntity<ResponseBean> deleteClient(@PathVariable String vendorId) {
+        try {
+            service.deleteClient(vendorId);
+            return ResponseEntity.ok(ResponseBean.successResponse("Client deleted successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseBean.errorResponse("Delete failed", e.getMessage()));
+        }
     }
 
 

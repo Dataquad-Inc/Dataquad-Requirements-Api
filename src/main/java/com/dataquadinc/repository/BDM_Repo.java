@@ -20,6 +20,8 @@ import java.sql.Timestamp;
 @Repository
 public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     List<BDM_Client> findByInvoiceIgnoreCase(String invoice);
+    boolean existsByVendorId(String vendorId);
+    void deleteByVendorId(String vendorId);
 
     @Query("SELECT c FROM BDM_Client c ORDER BY c.id DESC LIMIT 1")
     Optional<BDM_Client> findTopByOrderByIdDesc();

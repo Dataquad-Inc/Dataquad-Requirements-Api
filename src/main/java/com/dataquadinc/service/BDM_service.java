@@ -582,8 +582,15 @@ public class BDM_service {
         return result;
     }
 
-    public void deleteClient(String id) {
-        repository.deleteById(id);
+    public void deleteClient(String vendorId) {
+
+        if (vendorId == null || vendorId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vendor ID cannot be empty");
+        }
+        if (!repository.existsByVendorId(vendorId)) {
+            throw new RuntimeException("No vendor exists with Vendor ID: " + vendorId);
+        }
+        repository.deleteByVendorId(vendorId);
     }
 
     public BdmClientDetailsDTO getBdmClientDetails(String userId) {
