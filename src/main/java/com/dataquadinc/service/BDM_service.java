@@ -582,6 +582,7 @@ public class BDM_service {
         return result;
     }
 
+    @Transactional
     public void deleteClient(String vendorId) {
 
         if (vendorId == null || vendorId.trim().isEmpty()) {

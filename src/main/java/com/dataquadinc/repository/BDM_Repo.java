@@ -16,12 +16,18 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.sql.Timestamp;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     List<BDM_Client> findByInvoiceIgnoreCase(String invoice);
     boolean existsByVendorId(String vendorId);
-    void deleteByVendorId(String vendorId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM BDM_Client b WHERE b.vendorId = :vendorId")
+    void deleteByVendorId(@Param("vendorId") String vendorId);
 
     @Query("SELECT c FROM BDM_Client c ORDER BY c.id DESC LIMIT 1")
     Optional<BDM_Client> findTopByOrderByIdDesc();
