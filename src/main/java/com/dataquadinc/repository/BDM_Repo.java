@@ -35,16 +35,21 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         JOIN roles r ON ur.role_id = r.id
         WHERE r.name = 'BDM' and u.status = 'ACTIVE' and u.designation <> 'testuser'
           AND UPPER(COALESCE(u.entity,'')) = 'IN'
+          AND u.tenant_id = :tenantId
     """, nativeQuery = true)
-    List<BdmEmployeeProjection> findAllBdmEmployees();
+    List<BdmEmployeeProjection> findAllBdmEmployees(@Param("tenantId") String tenantId);
 
 
     @Query("SELECT c.clientName FROM BDM_Client c WHERE c.clientName = :clientName")
     List<String> findByClientName(String clientName);
 
-    @Query("SELECT b FROM BDM_Client b WHERE b.createdAt BETWEEN :startDate AND :endDate")
+    @Query("SELECT b FROM BDM_Client b WHERE b.tenantId = :tenantId")
+    List<BDM_Client> getClients(@Param("tenantId") String tenantId);
+
+    @Query("SELECT b FROM BDM_Client b WHERE b.createdAt BETWEEN :startDate AND :endDate AND b.tenantId = :tenantId")
     List<BDM_Client> getClientsByCreatedAtRange(@Param("startDate") LocalDateTime startDate,
-                                                @Param("endDate") LocalDateTime endDate);
+                                                @Param("endDate") LocalDateTime endDate,
+                                                @Param("tenantId") String tenantId);
 
 
     @Query(value = """
@@ -191,9 +196,6 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
             Pageable pageable
     );
 
-    @Query("SELECT b FROM BDM_Client b")
-    List<BDM_Client> getClients();
-
     @Query(value = """
     SELECT COUNT(*) 
     FROM candidate_submissions c 
@@ -218,8 +220,9 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
         b.client_address,
         b.location
     FROM bdm_client b
+    WHERE b.tenant_id = :tenantId
 """, nativeQuery = true)
-    List<Object[]> findOverallClients();
+    List<Object[]> findOverallClients(@Param("tenantId") String tenantId);
 
     @Query(value = """
     SELECT COUNT(*) 
@@ -286,12 +289,14 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
                 JOIN user_details ud ON ud.user_name = bc.on_boarded_by
                 WHERE ud.user_id = :userId
                   AND bc.status = 'ACTIVE'
+                  AND bc.tenant_id = :tenantId
                   AND DATE(bc.created_at) BETWEEN :startDate AND :endDate
             """, nativeQuery = true)
     long countClientsByUserIdAndDateRange(
             @Param("userId") String userId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+            @Param("endDate") LocalDate endDate,
+            @Param("tenantId") String tenantId
     );
 
     @Query(value = """
@@ -299,19 +304,21 @@ public interface BDM_Repo extends JpaRepository<BDM_Client,String> {
     FROM bdm_client 
     WHERE on_boarded_by = (SELECT user_name FROM user_details WHERE user_id = :userId)
     AND status = 'ACTIVE'
+    AND tenant_id = :tenantId
     AND DATE(created_at) BETWEEN :startDate AND :endDate
 """, nativeQuery = true)
     List<String> findClientNamesByUserIdAndDateRange(
             @Param("userId") String userId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+            @Param("endDate") LocalDate endDate,
+            @Param("tenantId") String tenantId
     );
 
     @Query(value = "SELECT user_name FROM users WHERE user_id = :userId", nativeQuery = true)
     String findUserNameByUserId(@Param("userId") String userId);
 
-    @Query(value = "SELECT COUNT(*) FROM requirements_model WHERE client_name = :clientName", nativeQuery = true)
-    int countRequirementsByClientName(@Param("clientName") String clientName);
+    @Query(value = "SELECT COUNT(*) FROM requirements_model WHERE client_name = :clientName AND tenant_id = :tenantId", nativeQuery = true)
+    int countRequirementsByClientName(@Param("clientName") String clientName, @Param("tenantId") String tenantId);
 
-    List<BDM_Client> findByOnBoardedBy(String userName);
+    List<BDM_Client> findByOnBoardedByAndTenantId(String userName, String tenantId);
 }

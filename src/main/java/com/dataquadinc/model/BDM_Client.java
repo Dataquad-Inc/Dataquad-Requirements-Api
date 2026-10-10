@@ -22,6 +22,9 @@ public class BDM_Client {
     private String id;  // Custom-generated ID
     @Column(unique = true, nullable = false)
     private String clientName;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
     private String onBoardedBy;
     private String clientAddress;
     private String positionType;

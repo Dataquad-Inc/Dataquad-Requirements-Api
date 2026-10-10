@@ -8,6 +8,8 @@ import com.dataquadinc.model.BDM_Client;
 import com.dataquadinc.repository.BDM_Repo;
 import com.dataquadinc.repository.BdmEmployeeProjection;
 import com.dataquadinc.repository.RequirementsDao;
+import com.dataquadinc.tenant.TenantAccess;
+import com.dataquadinc.tenant.TenantContext;
 import jakarta.persistence.Tuple;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -60,6 +62,7 @@ public class BDM_service {
             throw new RuntimeException("Client name '" + client.getClientName() + "' already exists!");
         }
         client.setId(generateCustomId());
+        client.setTenantId(TenantContext.getTenantId());
         return repository.save(client);
     }
 
@@ -134,6 +137,7 @@ public class BDM_service {
 
         BDM_Client entity = convertToEntity(dto);
         entity.setId(generateCustomId()); // Generate custom ID
+        entity.setTenantId(TenantContext.getTenantId());
 
         // ✅ Set assignedBy logic
         String createdBy = dto.getOnBoardedBy();
@@ -174,7 +178,7 @@ public class BDM_service {
     public List<BDM_Dto> getAllClients() {
 
         // 2. Fetch clients created in the current month
-        List<BDM_Client> clients = repository.getClients();
+        List<BDM_Client> clients = repository.getClients(TenantContext.getTenantId());
 
         // 4. Logging
         logger.info("Fetched {} clients for current month {} to {}", clients.size());
@@ -183,7 +187,8 @@ public class BDM_service {
         return clients.stream()
                 .map(client -> {
                     BDM_Dto dto = convertToDTO(client);
-                    int requirementCount = repository.countRequirementsByClientName(client.getClientName());
+                    int requirementCount = repository.countRequirementsByClientName(
+                            client.getClientName(), TenantContext.getTenantId());
                     dto.setNumberOfRequirements(requirementCount); // ⬅️ Set count here
                     return dto;
                 })
@@ -193,7 +198,7 @@ public class BDM_service {
     //@Override
     public List<Map<String, Object>> getOverallClients() {
 
-        List<Object[]> results = repository.findOverallClients();
+        List<Object[]> results = repository.findOverallClients(TenantContext.getTenantId());
 
         List<Map<String, Object>> response = new ArrayList<>();
 
@@ -224,14 +229,15 @@ public class BDM_service {
         }
 
         // Step 2: fetch clients onboarded by this user
-        List<BDM_Client> clients = repository.findByOnBoardedBy(userName);
+        List<BDM_Client> clients = repository.findByOnBoardedByAndTenantId(userName, TenantContext.getTenantId());
 
         // Step 3: convert to DTO
         return clients.stream()
                 .map(client -> {
                     BDM_Dto dto = convertToDTO(client);
 
-                    int requirementCount = repository.countRequirementsByClientName(client.getClientName());
+                    int requirementCount = repository.countRequirementsByClientName(
+                            client.getClientName(), TenantContext.getTenantId());
                     dto.setNumberOfRequirements(requirementCount);
 
                     return dto;
@@ -257,11 +263,15 @@ public class BDM_service {
 
 
     public Optional<BDM_Dto> getClientById(String id) {
-        return repository.findById(id).map(this::convertToDTO);
+        return repository.findById(id)
+                .filter(c -> !TenantAccess.isForeignTenant(c.getTenantId()))
+                .map(this::convertToDTO);
     }
 
     public Optional<BDM_Dto> updateClient(String id, BDM_Dto dto, List<MultipartFile> files) {
-        return repository.findById(id).map(existingClient -> {
+        return repository.findById(id)
+                .filter(c -> !TenantAccess.isForeignTenant(c.getTenantId()))
+                .map(existingClient -> {
 
             // 🔁 Assignment logic
             String createdBy = dto.getOnBoardedBy();   // Person updating
@@ -323,7 +333,7 @@ public class BDM_service {
     public List<BdmEmployeeDTO> getAllBdmEmployeesDateFilter(LocalDate startDate, LocalDate endDate) {
         logger.info("📅 Fetching BDM employee stats from {} to {}", startDate, endDate);
 
-        List<BdmEmployeeProjection> bdmUsers = repository.findAllBdmEmployees();
+        List<BdmEmployeeProjection> bdmUsers = repository.findAllBdmEmployees(TenantContext.getTenantId());
         logger.info("👥 Total BDM employees found: {}", bdmUsers.size());
 
         List<BdmEmployeeDTO> result = new ArrayList<>();
@@ -334,8 +344,10 @@ public class BDM_service {
 
             logger.info("➡️ Processing BDM: {} (ID: {})", userName, userId);
 
-            long clientCount = repository.countClientsByUserIdAndDateRange(userId, startDate, endDate);
-            List<String> clientNames = repository.findClientNamesByUserIdAndDateRange(userId, startDate, endDate);
+            long clientCount = repository.countClientsByUserIdAndDateRange(
+                    userId, startDate, endDate, TenantContext.getTenantId());
+            List<String> clientNames = repository.findClientNamesByUserIdAndDateRange(
+                    userId, startDate, endDate, TenantContext.getTenantId());
 
             logger.info("📦 Clients for {}: {} | Count: {}", userName, clientNames, clientCount);
 
@@ -386,7 +398,7 @@ public class BDM_service {
 
         logger.info("🗓️ Defaulting to current month: {} to {}", startDate, endDate);
 
-        List<BdmEmployeeProjection> bdmUsers = repository.findAllBdmEmployees();
+        List<BdmEmployeeProjection> bdmUsers = repository.findAllBdmEmployees(TenantContext.getTenantId());
         logger.info("👥 Total BDM employees found: {}", bdmUsers.size());
 
         List<BdmEmployeeDTO> result = new ArrayList<>();
@@ -397,8 +409,10 @@ public class BDM_service {
 
             logger.info("➡️ Processing BDM: {} (ID: {})", userName, userId);
 
-            long clientCount = repository.countClientsByUserIdAndDateRange(userId, startDate, endDate);
-            List<String> clientNames = repository.findClientNamesByUserIdAndDateRange(userId, startDate, endDate);
+            long clientCount = repository.countClientsByUserIdAndDateRange(
+                    userId, startDate, endDate, TenantContext.getTenantId());
+            List<String> clientNames = repository.findClientNamesByUserIdAndDateRange(
+                    userId, startDate, endDate, TenantContext.getTenantId());
 
             logger.info("📦 Clients for {}: {} | Count: {}", userName, clientNames, clientCount);
 
@@ -443,6 +457,10 @@ public class BDM_service {
     }
 
     public void deleteClient(String id) {
+        BDM_Client client = repository.findById(id).orElse(null);
+        if (client == null || TenantAccess.isForeignTenant(client.getTenantId())) {
+            return;
+        }
         repository.deleteById(id);
     }
 
@@ -849,11 +867,13 @@ public class BDM_service {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        List<BDM_Client> clients = repository.getClientsByCreatedAtRange(startDateTime, endDateTime);
+        List<BDM_Client> clients = repository.getClientsByCreatedAtRange(
+                startDateTime, endDateTime, TenantContext.getTenantId());
 
         // 🔁 Set requirement count for each client
         for (BDM_Client client : clients) {
-            int count = repository.countRequirementsByClientName(client.getClientName());
+            int count = repository.countRequirementsByClientName(
+                    client.getClientName(), TenantContext.getTenantId());
             client.setNumberOfRequirements(count);
         }
 

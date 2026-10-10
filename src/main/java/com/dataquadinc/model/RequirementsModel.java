@@ -76,6 +76,9 @@ public class RequirementsModel {
     private String status;
     private String assignedBy;
 
+    @Column(name = "tenant_id")
+    private String tenantId;
+
     private LocalDateTime updatedAt;
 
     public LocalDateTime getUpdatedAt() {

@@ -620,6 +620,15 @@ public class RequirementsController {
 		List<Coordinator_DTO> stats= service.getCoordinatorStats();
 		return ResponseEntity.ok(stats);
 	}
+
+	@GetMapping("/coordinatorstats/filterByDate")
+	public ResponseEntity<List<Coordinator_DTO>> getCountCoordinatestatsDateFilter(
+			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+			@RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+	) {
+		List<Coordinator_DTO> stats = service.getCoordinatorStatsDateFilter(startDate, endDate);
+		return ResponseEntity.ok(stats);
+	}
 	@GetMapping("/stats/filterByDate")
 	public ResponseEntity<CandidateStatsResponse> getCandidateStats(
 			@RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

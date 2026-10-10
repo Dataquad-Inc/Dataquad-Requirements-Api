@@ -440,6 +440,8 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
         END) AS scheduledInterviewsCount
 
     FROM user_details u
+    JOIN user_roles ur ON u.user_id = ur.user_id
+    JOIN roles r ON ur.role_id = r.id
     JOIN interview_details idt ON idt.assigned_to = u.user_id
 
     -- Latest JSON object only
@@ -453,10 +455,16 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             interviewLevel VARCHAR(50) PATH '$.interviewLevel'
         )
     ) AS latest_status ON TRUE
-    WHERE u.status != 'inactive' and u.entity = 'IN'
+    WHERE u.status != 'inactive' AND u.entity = 'IN'
+      AND UPPER(r.name) = 'COORDINATOR'
+      AND u.tenant_id = :tenantId
+      AND idt.tenant_id = :tenantId
+      AND DATE(idt.interview_date_time) BETWEEN :startDate AND :endDate
     GROUP BY u.user_id, u.user_name, u.email
     """, nativeQuery = true)
-    List<Tuple> countInterviewsByStatus();
+    List<Tuple> countInterviewsByStatus(@Param("startDate") LocalDate startDate,
+                                        @Param("endDate") LocalDate endDate,
+                                        @Param("tenantId") String tenantId);
 
 
     @Query(value = """
@@ -503,6 +511,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
 
     @Query("SELECT r FROM RequirementsModel r " +
             "WHERE r.requirementAddedTimeStamp BETWEEN :startDate AND :endDate " +
+            "AND r.tenantId = :tenantId " +
             "AND (" +
             "   :search IS NULL OR " +
             "   LOWER(r.jobId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -517,6 +526,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             @Param("search") String search,
+            @Param("tenantId") String tenantId,
             Pageable pageable
     );
 
@@ -527,6 +537,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
     LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
     WHERE r.status IN ('Submitted','In Progress')
+    AND r.tenant_id = :tenantId
     
     AND (
         :search IS NULL OR :search = '' OR
@@ -550,6 +561,7 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     LEFT JOIN job_recruiters jr ON r.job_id = jr.job_id
     LEFT JOIN user_details u ON jr.recruiter_id = u.user_id
     WHERE r.status IN ('Submitted','In Progress')
+    AND r.tenant_id = :tenantId
     
     AND (
         :search IS NULL OR :search = '' OR
@@ -568,7 +580,10 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
     )
     """,
             nativeQuery = true)
-    Page<RequirementsModel> searchRequirements(@Param("search") String search, Pageable pageable);
+    Page<RequirementsModel> searchRequirements(
+            @Param("search") String search,
+            @Param("tenantId") String tenantId,
+            Pageable pageable);
 
 
     @Query(value = """
@@ -1087,9 +1102,11 @@ public interface RequirementsDao extends JpaRepository<RequirementsModel, String
         WHERE r.name = 'Employee'
           AND u.status != 'INACTIVE' 
           AND u.entity = 'IN'
+          AND u.tenant_id = :tenantId
         """, nativeQuery = true)
     List<Tuple> getEmployeeCandidateStats(@Param("startDate") LocalDate startDate,
-                                          @Param("endDate") LocalDate endDate);
+                                          @Param("endDate") LocalDate endDate,
+                                          @Param("tenantId") String tenantId);
 
     @Query(value = """
     SELECT 
@@ -1611,6 +1628,7 @@ SELECT * FROM (
       AND ud.entity = :entity
       AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
+      AND ud.tenant_id = :tenantId
 
       AND NOT EXISTS (
           SELECT 1
@@ -1618,6 +1636,7 @@ SELECT * FROM (
           JOIN requirements_model r ON r.job_id = jr.job_id
           WHERE jr.recruiter_id = ud.user_id
             AND r.status IN ('In Progress', 'Submitted')
+            AND r.tenant_id = :tenantId
             AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
       )
 
@@ -1692,6 +1711,8 @@ SELECT * FROM (
       AND ud.entity = :entity
     AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
+      AND ud.tenant_id = :tenantId
+      AND r.tenant_id = :tenantId
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
       AND (
@@ -1738,6 +1759,7 @@ SELECT COUNT(*) FROM (
       AND ud.entity = :entity
       AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
+      AND ud.tenant_id = :tenantId
 
       AND NOT EXISTS (
           SELECT 1
@@ -1745,6 +1767,7 @@ SELECT COUNT(*) FROM (
           JOIN requirements_model r ON r.job_id = jr.job_id
           WHERE jr.recruiter_id = ud.user_id
             AND r.status IN ('In Progress', 'Submitted')
+            AND r.tenant_id = :tenantId
             AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
       )
 
@@ -1774,6 +1797,8 @@ SELECT COUNT(*) FROM (
       AND ud.entity = :entity
       AND ud.user_id LIKE :userPrefix
       AND ud.designation != 'testuser'
+      AND ud.tenant_id = :tenantId
+      AND r.tenant_id = :tenantId
       AND DATE(r.updated_at) BETWEEN :startDate AND :endDate
 
       AND (
@@ -1805,6 +1830,7 @@ SELECT COUNT(*) FROM (
             @Param("search") String search,
             @Param("entity") String entity,
             @Param("userPrefix") String userPrefix,
+            @Param("tenantId") String tenantId,
             Pageable pageable
     );
 

@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 
 import com.dataquadinc.dto.*;
 import com.dataquadinc.exceptions.*;
+import com.dataquadinc.tenant.TenantAccess;
+import com.dataquadinc.tenant.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Tuple;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -124,6 +126,7 @@ public class RequirementsService {
 			model.setStatus("In Progress");
 			model.setRequirementAddedTimeStamp(LocalDateTime.now());
 			model.setUpdatedAt(LocalDateTime.now());
+			model.setTenantId(TenantContext.getTenantId());
 			requirementsDao.save(model);
 		} else {
 			// Throw exception if the jobId already exists
@@ -446,7 +449,7 @@ public class RequirementsService {
 		Pageable pageable = PageRequest.of(page, size, Sort.by("requirement_added_time_stamp").descending());
 
 		Page<RequirementsModel> requirementsPage =
-				requirementsDao.searchRequirements(search,pageable);
+				requirementsDao.searchRequirements(search, TenantContext.getTenantId(), pageable);
 
 		logger.info("Fetched no of Requirements {}", requirementsPage.getTotalElements());
 
@@ -520,6 +523,7 @@ public class RequirementsService {
 						startDateTime,
 						endDateTime,
 						search,
+						TenantContext.getTenantId(),
 						pageable
 				);
 
@@ -579,6 +583,9 @@ public class RequirementsService {
 	public RequirementsDto getRequirementDetailsById(String jobId) {
 		RequirementsModel requirement = requirementsDao.findById(jobId)
 				.orElseThrow(() -> new RequirementNotFoundException("Requirement Not Found with Id : " + jobId));
+		if (TenantAccess.isForeignTenant(requirement.getTenantId())) {
+			throw new RequirementNotFoundException("Requirement Not Found with Id : " + jobId);
+		}
 		return modelMapper.map(requirement, RequirementsDto.class);
 	}
 
@@ -587,6 +594,9 @@ public class RequirementsService {
 		// Fetch the existing requirement by jobId
 		RequirementsModel requirement = requirementsDao.findById(jobId)
 				.orElseThrow(() -> new RequirementNotFoundException("Requirement Not Found with Id : " + jobId));
+		if (TenantAccess.isForeignTenant(requirement.getTenantId())) {
+			throw new RequirementNotFoundException("Requirement Not Found with Id : " + jobId);
+		}
 
 		// Get current recruiter IDs
 		Set<String> cleanedRecruiterIds = recruiterIds.stream()
@@ -900,6 +910,9 @@ public class RequirementsService {
 		// Fetch the requirement
 		RequirementsModel requirement = requirementsDao.findByJobId(jobId)
 				.orElseThrow(() -> new RequirementNotFoundException("Requirement Not Found with Id: " + jobId));
+		if (TenantAccess.isForeignTenant(requirement.getTenantId())) {
+			throw new RequirementNotFoundException("Requirement Not Found with Id: " + jobId);
+		}
 
 		// Manually convert to DTO
 		RequirementsDto requirementsDto = mapToDto(requirement);
@@ -1076,7 +1089,8 @@ public class RequirementsService {
 		List<UserStatsDTO> userStatsList = new ArrayList<>();
 
 		// 👤 Employee Stats with last 30 days filter
-		List<Tuple> employeeStats = requirementsDao.getEmployeeCandidateStats(startDate, endDate);
+		List<Tuple> employeeStats = requirementsDao.getEmployeeCandidateStats(
+				startDate, endDate, TenantContext.getTenantId());
 		userStatsList.addAll(employeeStats.stream()
 				.map(tuple -> {
 					UserStatsDTO dto = new UserStatsDTO();
@@ -1131,7 +1145,14 @@ public class RequirementsService {
 
 
 	public List<Coordinator_DTO> getCoordinatorStats() {
-		List<Tuple> tuples = requirementsDao.countInterviewsByStatus();
+		LocalDate endDate = LocalDate.now();
+		LocalDate startDate = endDate.withDayOfMonth(1);
+		return getCoordinatorStatsDateFilter(startDate, endDate);
+	}
+
+	public List<Coordinator_DTO> getCoordinatorStatsDateFilter(LocalDate startDate, LocalDate endDate) {
+		List<Tuple> tuples = requirementsDao.countInterviewsByStatus(
+				startDate, endDate, TenantContext.getTenantId());
 		List<Coordinator_DTO> dtoList = new ArrayList<>();
 
 		for (Tuple tuple : tuples) {
@@ -1534,7 +1555,8 @@ public class RequirementsService {
 		List<UserStatsDTO> userStatsList = new ArrayList<>();
 
 		// 👤 Employee Stats
-		List<Tuple> employeeStats = requirementsDao.getEmployeeCandidateStats(startDate, endDate);
+		List<Tuple> employeeStats = requirementsDao.getEmployeeCandidateStats(
+				startDate, endDate, TenantContext.getTenantId());
 		userStatsList.addAll(employeeStats.stream()
 				.map(tuple -> {
 					UserStatsDTO dto = new UserStatsDTO();
@@ -1661,7 +1683,8 @@ public class RequirementsService {
 
         Page<Object[]> pageResult =
                 requirementsDao.findInProgressRequirementsByDateRange(
-                        startDate, endDate, isToday, search, entity,userPrefix, pageable);
+                        startDate, endDate, isToday, search, entity, userPrefix,
+                        TenantContext.getTenantId(), pageable);
 
         List<InProgressRequirementDTO> dtos = new ArrayList<>();
 
