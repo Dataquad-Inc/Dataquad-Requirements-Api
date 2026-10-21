@@ -1,5 +1,6 @@
 package com.dataquadinc.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -77,7 +78,6 @@ public class BDM_Dto {
 
     private String onBoardedBy;
 
-    private String assignedTo;
 
 
 
@@ -89,7 +89,11 @@ public class BDM_Dto {
 
     private String location;
 
-    private String accountManager;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<String> assignedTo;
+
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<String> accountManager;
 
 
     @JsonIgnore
@@ -262,13 +266,6 @@ public class BDM_Dto {
         this.onBoardedBy = onBoardedBy;
     }
 
-    public String getAssignedTo() {
-        return assignedTo;
-    }
-
-    public void setAssignedTo(String assignedTo) {
-        this.assignedTo = assignedTo;
-    }
 
     public String getStatus() {
         return status;
@@ -298,7 +295,11 @@ public class BDM_Dto {
 
     public void setCurrency(String currency) { this.currency = currency; }
 
-    public String getAccountManager() {return accountManager;}
+    public List<String> getAssignedTo() { return assignedTo;}
 
-    public void setAccountManager(String accountManager) {this.accountManager = accountManager;}
+    public void setAssignedTo(List<String> assignedTo) { this.assignedTo = assignedTo; }
+
+    public List<String> getAccountManager() { return accountManager; }
+
+    public void setAccountManager(List<String> accountManager) { this.accountManager = accountManager; }
 }

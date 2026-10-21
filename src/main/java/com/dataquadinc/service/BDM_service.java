@@ -104,6 +104,7 @@ public class BDM_service {
         dto.setStatus(client.getStatus());
         dto.setFeedBack(client.getFeedBack());
         dto.setCurrency(client.getCurrency());
+        dto.setAssignedTo(client.getAssignedTo());
         dto.setAccountManager(client.getAccountManager());
         return dto;
     }
@@ -131,6 +132,7 @@ public class BDM_service {
         client.setFeedBack(dto.getFeedBack());
         client.setInvoice(dto.getInvoice());
         client.setCurrency(dto.getCurrency());
+        client.setAssignedTo(dto.getAssignedTo());
         client.setAccountManager(dto.getAccountManager());
         return client;
     }
@@ -150,13 +152,14 @@ public class BDM_service {
         entity.setVendorLinkedInUrl(dto.getVendorLinkedInUrl());
         entity.setCurrency(dto.getCurrency());
         entity.setAccountManager(dto.getAccountManager());
-        String createdBy = dto.getOnBoardedBy();
-        String assignedTo = dto.getAssignedTo();
-        if (assignedTo != null && !assignedTo.isBlank()) {
-            entity.setOnBoardedBy(assignedTo);
-        } else {
-            entity.setOnBoardedBy(createdBy);
-        }
+        // Preserve the original onboarding behavior.
+        entity.setOnBoardedBy(dto.getOnBoardedBy());
+        // Assigned employees are optional during client creation.
+        entity.setAssignedTo(dto.getAssignedTo() != null ? dto.getAssignedTo() : new ArrayList<>()
+        );
+        // Account managers are also optional during client creation.
+        entity.setAccountManager(dto.getAccountManager() != null ? dto.getAccountManager() : new ArrayList<>()
+        );
 
         if (dto.getSupportingCustomers() != null
                 && !dto.getSupportingCustomers().isEmpty()) {
@@ -331,11 +334,18 @@ public class BDM_service {
         return clientOptional.map(existingClient -> {
 
             String createdBy = dto.getOnBoardedBy();
-            String assignedTo = dto.getAssignedTo();
 
-            if (assignedTo != null && !assignedTo.isBlank()) {
-                existingClient.setOnBoardedBy(assignedTo);
-            } else if (createdBy != null && !createdBy.isBlank()) {
+            if (createdBy != null && !createdBy.isBlank()) {
+                existingClient.setOnBoardedBy(createdBy);
+            }
+            // Update assignedTo independently.
+            if (dto.getAssignedTo() != null) {
+                existingClient.setAssignedTo(dto.getAssignedTo());
+            }
+            // Update accountManager independently.
+            if (dto.getAccountManager() != null) {
+                existingClient.setAccountManager(dto.getAccountManager());
+            }else if (createdBy != null && !createdBy.isBlank()) {
                 existingClient.setOnBoardedBy(createdBy);
             }
 
