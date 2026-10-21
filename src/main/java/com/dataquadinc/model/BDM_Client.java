@@ -55,7 +55,13 @@ public class BDM_Client {
 
     private String currency;
 
-    private String accountManager;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "assigned_to", columnDefinition = "json")
+    private List<String> assignedTo;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "account_manager", columnDefinition = "json")
+    private List<String> accountManager;
 
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -324,7 +330,4 @@ public class BDM_Client {
         this.invoice = invoice;
     }
 
-    public String get() {return accountManager;}
-
-    public void setAccountManager(String accountManager) {this.accountManager = accountManager;}
 }
